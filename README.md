@@ -1,4 +1,4 @@
-# ipipe - A cross-plaform named-pipe library
+# ipipe - A cross-plaform named-pipe library for Rust
 
 This library allows the creation of platform-independant named pipes.
 
@@ -11,34 +11,29 @@ use std::sync::{Arc, Mutex};
 
 fn main()
 {
-    let mut fifo = Fifo::create(OnCleanup::Delete)?;
-    println!("Fifo path: {}", fifo.path().display());
+    let mut pipe = Pipe::create(OnCleanup::Delete)?;
+    println!("Name: {}", pipe.path().display());
 
-    let writer = Arc::new(Mutex::from(fifo.clone()));
-    let thread = thread::spawn(move || write_nums(&thread_writer));
-    print!("{}", fifo.read_string_while(|c| c != CANCEL).unwrap());
+    let writer = Arc::new(Mutex::from(pipe.clone()));
+    let thread = thread::spawn(move || print_nums(&thread_writer));
+    print!("{}", pipe.read_string_while(|c| c != CANCEL).unwrap());
 }
 
-fn write_nums(fifo: &Mutex<Fifo>) -> Result<usize>
+fn print_nums(pipe: &Mutex<Fifo>) -> Result<usize>
 {
-    let mut fifo = fifo.lock();
-    let fifo = fifo.as_mut().unwrap();
+    let mut pipe = pipe.lock();
+    let pipe = pipe.as_mut().unwrap();
     let mut written = 0;
     for i in 1..=10
     {
-        written += fifo.write_string(&format!("{}\n", i))?;
+        written += pipe.write_string(&format!("{}\n", i))?;
     }
-    written += fifo.write_byte(CANCEL)?;
+    written += pipe.write_byte(CANCEL)?;
     Ok(written)
 }
 ```
-`Fifo::create` generates a random pipe name in a temporary location.
-Example path (Windows):
-`Fifo path: \\.\pipe\pipe_23676_xMvclVhNKcg6iGf`
-Example path (Unix):
-`Fifo path: /tmp/pipe_1230_mFP8dx8uVl`
 
-Running the above program will output the same after the fact:
+Running the above example program will output:
 ```
 1
 2
@@ -51,3 +46,10 @@ Running the above program will output the same after the fact:
 9
 10
 ```
+
+`Pipe::create` generates a random pipe name in a temporary location.
+Example path (Windows):
+`\\.\pipe\pipe_23676_xMvclVhNKcg6iGf`
+Example path (Unix):
+`/tmp/pipe_1230_mFP8dx8uVl`
+

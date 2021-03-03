@@ -8,7 +8,11 @@ edition = "2018"
 description = """
 Cross-platform named-pipe API.
 """
-keywords = ["pipe"]
+keywords = ["pipe", "ipc", "fifo"]
+homepage = "https://github.com/Eolu/ipipe"
+repository = "https://github.com/Eolu/ipipe"
+categories = ["filesystem", "os::unix-apis", "os::windows-apis", "api-bindings"]
+documentation = "https://docs.rs/ipipe"
 
 [dependencies]
 rand = "0.5"

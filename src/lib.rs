@@ -19,7 +19,7 @@ pub enum OnCleanup
 }
 
 /// Iterator over bytes from the pipe
-pub struct FifoIterator<'a>(&'a mut Fifo);
+pub struct FifoIterator<'a>(&'a mut Pipe);
 impl Iterator for FifoIterator<'_>
 {
     type Item = u8;
@@ -45,7 +45,7 @@ impl Iterator for FifoIterator<'_>
     }
 }
 
-impl Fifo
+impl Pipe
 {
     /// Return the path to this named pipe
     pub fn path(&self) -> &std::path::Path
@@ -98,7 +98,7 @@ impl Fifo
     }
 }
 
-impl std::io::Write for Fifo
+impl std::io::Write for Pipe
 {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> 
     {

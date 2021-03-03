@@ -8,7 +8,7 @@ use nix::errno::Errno;
 use nix::sys::termios::{tcflush, FlushArg};
 
 /// Abstraction over a named pipe
-pub struct Fifo
+pub struct Pipe
 {
     handle: std::os::unix::io::RawFd,
     pub(super) path: PathBuf,
@@ -16,7 +16,7 @@ pub struct Fifo
     delete: OnCleanup
 }
 
-impl Fifo
+impl Pipe
 {
     /// Open an existing pipe. If 'delete_on_drop' is true, the named pipe will
     /// be deleted when the returned struct is deallocated.
@@ -44,7 +44,7 @@ impl Fifo
             }
 
             fcntl::open(path, OFlag::O_RDWR | OFlag::O_NOCTTY, mode)
-                .map(|handle| Fifo 
+                .map(|handle| Pipe 
                     { 
                         handle, 
                         path: path.to_path_buf(), 
@@ -93,7 +93,7 @@ impl Fifo
                 }
             }
 
-            Fifo::open(&path, delete_on_drop)
+            Pipe::open(&path, delete_on_drop)
         }
         else
         {
@@ -158,7 +158,7 @@ impl Fifo
     }
 }
 
-impl std::io::Read for Fifo 
+impl std::io::Read for Pipe 
 {
     fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> 
     {
@@ -168,7 +168,7 @@ impl std::io::Read for Fifo
     }
 }
 
-impl Drop for Fifo
+impl Drop for Pipe
 {
     fn drop(&mut self) 
     {
@@ -187,13 +187,13 @@ impl Drop for Fifo
     }
 }
 
-impl Clone for Fifo
+impl Clone for Pipe
 {
-    /// Cloning a fifo creates a slave which points to the same path but does not
-    /// close the fifo when dropped.
+    /// Cloning a pipe creates a slave which points to the same path but does not
+    /// close the pipe when dropped.
     fn clone(&self) -> Self 
     {
-        Fifo 
+        Pipe 
         { 
             handle: self.handle,
             path: self.path.clone(), 

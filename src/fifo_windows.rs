@@ -5,7 +5,7 @@ use std::io::Write;
 use rand::{thread_rng, Rng, distributions::Alphanumeric};
 
 /// Abstraction over a named pipe
-pub struct Fifo
+pub struct Pipe
 {
     handle: Option<PipeStream>,
     listener: Option<PipeStream>,
@@ -13,16 +13,16 @@ pub struct Fifo
     pub(super) is_closed: bool
 }
 
-unsafe impl Send for Fifo {}
-unsafe impl Sync for Fifo {}
+unsafe impl Send for Pipe {}
+unsafe impl Sync for Pipe {}
 
-impl Fifo
+impl Pipe
 {
     /// Open an existing pipe. If 'delete_on_drop' is true, the named pipe will
     /// be deleted when the returned struct is deallocated.
     pub fn open(path: &Path, _: OnCleanup) -> Result<Self>
     {
-        Ok(Fifo 
+        Ok(Pipe 
         { 
             handle: None,
             listener: None,
@@ -41,7 +41,7 @@ impl Fifo
             .take(15)
             .collect::<String>());
 
-        Fifo::open(&Path::new(&path_string), delete_on_drop)
+        Pipe::open(&Path::new(&path_string), delete_on_drop)
     }
 
     /// Close the pipe. If the pipe is not closed before deallocation, this will
@@ -169,7 +169,7 @@ impl Fifo
         Ok(())
     }
 
-    /// Initializes the FIFO for reading
+    /// Initializes the pipe for reading
     fn init_reader(&mut self) -> Result<()>
     {
         if self.handle.is_none()
@@ -179,7 +179,7 @@ impl Fifo
         Ok(())
     }
 
-    /// Initializes the FIFO for writing
+    /// Initializes the pipe for writing
     fn init_listener(&mut self) -> Result<()>
     {
         if self.listener.is_none()
@@ -191,7 +191,7 @@ impl Fifo
     }
 }
 
-impl std::io::Read for Fifo
+impl std::io::Read for Pipe
 {
     fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> 
     {
@@ -228,7 +228,7 @@ impl std::io::Read for Fifo
     }
 }
 
-impl Drop for Fifo
+impl Drop for Pipe
 {
     fn drop(&mut self) 
     {
@@ -242,13 +242,13 @@ impl Drop for Fifo
     }
 }
 
-impl Clone for Fifo
+impl Clone for Pipe
 {
-    /// Cloning a fifo creates a slave which points to the same path but does not
-    /// close the fifo when dropped.
+    /// Cloning a pipe creates a slave which points to the same path but does not
+    /// close the pipe when dropped.
     fn clone(&self) -> Self 
     {
-        Fifo 
+        Pipe 
         { 
             handle: None,
             listener: None,
