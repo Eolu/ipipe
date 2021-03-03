@@ -1,4 +1,4 @@
-# ipipe - A cross-plaform named-pipe library for Rust
+# ipipe - A cross-platorm named-pipe library for Rust
 
 This library allows the creation of platform-independant named pipes.
 
