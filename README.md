@@ -53,3 +53,4 @@ Example path (Windows):
 Example path (Unix):
 `/tmp/pipe_1230_mFP8dx8uVl`
 
+`Pipe::open` allows a pipe name to be specified.
