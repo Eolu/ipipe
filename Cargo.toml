@@ -1,0 +1,20 @@
+[package]
+name = "ipipe"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+authors = ["Griffin O'Neill <gsoneill1003@gmail.com>"]
+edition = "2018"
+description = """
+Cross-platform named-pipe API.
+"""
+keywords = ["pipe"]
+
+[dependencies]
+rand = "0.5"
+
+[target.'cfg(unix)'.dependencies]
+nix = "0.19"
+
+[target.'cfg(windows)'.dependencies]
+windows-named-pipe = "0.1"
