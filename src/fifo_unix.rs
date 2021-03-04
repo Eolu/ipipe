@@ -90,13 +90,12 @@ impl Pipe
                 }
             }
 
-            Pipe::open(&path, delete_on_drop)
+            Pipe::open(&path, on_cleanup)
         }
         else
         {
             Err(Error::InvalidPath)
         }
-        Pipe::open(&Path::new(&path_string), on_cleanup)
     }
 
     /// Create a pipe with a randomly generated name in a tempory directory. If
@@ -135,7 +134,7 @@ impl Pipe
                 }
             }
 
-            Pipe::open(&path, delete_on_drop)
+            Pipe::open(&path, on_cleanup)
         }
         else
         {
