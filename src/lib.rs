@@ -1,3 +1,44 @@
+//! Cross-platform named-pipe API.
+//!
+//! # Quick Start
+//!
+//! To get started quickly, try using Pipe::with_name to create a pipe with a 
+//! given name.
+//! ```
+//! use ipipe::{Pipe, OnCleanup};
+//! fn main() -> ipipe::Result<()>
+//! {
+//!     let mut pipe = Pipe::with_name("test_pipe", OnCleanup::Delete)?;
+//!     println!("Pipe path: {}", pipe.path().display());
+//!
+//!     // Read a line
+//!     println!("{}", pipe.read_string_while(|c| c != '\n').unwrap());
+//!     Ok(())
+//! }
+//! ```
+//! 
+//! Then in another program:
+//! ```
+//! fn main() -> ipipe::Result<()>
+//! {
+//!     let mut pipe = Pipe::with_name("test_pipe", OnCleanup::Delete)?;
+//!     pipe.write_string("This is only a test.\n")?;
+//! }
+//! ```
+//! You can also use `Pipe::create` to open a pipe with a randomly-generated
+//! name, which can then be accessed by calling Pipe::path.
+//! 
+//! Lastly, Pipe::open can be used to specify an exact path. This is not
+//! platform agnostic, however, as Windows pipe paths require a special
+//! format.
+//!
+//! Calling `clone()` on a pipe will create a slave instance. Slave instances 
+//! will not delete or close the pipe when they go out of scope. This allows
+//! readers and writers to the same pipe to be passed to different threads and 
+//! contexts.
+
+
+
 #[cfg(unix)]
 mod fifo_unix;
 #[cfg(unix)]

@@ -18,8 +18,9 @@ unsafe impl Sync for Pipe {}
 
 impl Pipe
 {
-    /// Open an existing pipe. If 'delete_on_drop' is true, the named pipe will
-    /// be deleted when the returned struct is deallocated.
+    /// Open a pipe at an existing path. Note that this function
+    /// is not platform-agnostic as unix pipe paths and Windows 
+    /// pipe paths are are formatted differnetly.
     pub fn open(path: &Path, _: OnCleanup) -> Result<Self>
     {
         Ok(Pipe 
@@ -31,9 +32,16 @@ impl Pipe
         })
     }
 
-    /// Create a pipe. If 'delete_on_drop' is true, the named pipe will be
-    /// deleted when the returned struct is deallocated.
-    pub fn create(delete_on_drop: OnCleanup) -> Result<Self>
+    /// Open a pipe with the given name. Note that this is just a string name,
+    /// not a path.
+    pub fn with_name(name: &str, on_cleanup: OnCleanup) -> Result<Self>
+    {
+        let path_string = format!("\\\\.\\pipe\\{}", name);
+        Pipe::open(&Path::new(&path_string), on_cleanup)
+    }
+
+    /// Open a pipe with a randomly generated name.
+    pub fn create(on_cleanup: OnCleanup) -> Result<Self>
     {
         // Generate a random path name
         let path_string = format!("\\\\.\\pipe\\pipe_{}_{}", std::process::id(),thread_rng()
@@ -41,7 +49,7 @@ impl Pipe
             .take(15)
             .collect::<String>());
 
-        Pipe::open(&Path::new(&path_string), delete_on_drop)
+        Pipe::open(&Path::new(&path_string), on_cleanup)
     }
 
     /// Close the pipe. If the pipe is not closed before deallocation, this will

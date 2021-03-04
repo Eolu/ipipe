@@ -1,11 +1,11 @@
-use crate::{Result, Pipe, OnCleanup};
+use crate::{Pipe, OnCleanup};
 use std::thread;
 use std::sync::{Arc, Mutex};
 
 const CANCEL: u8 = 24;
 
 #[test]
-fn test_fifo() -> Result<()>
+fn test_fifo() -> crate::Result<()>
 {
     let mut pipe = Pipe::create(OnCleanup::Delete)?;
     println!("Pipe path: {}", pipe.path().display());
@@ -26,7 +26,7 @@ fn test_fifo() -> Result<()>
     Ok(())
 }
 
-fn write_nums(pipe: &mut Pipe, max: i32) -> Result<usize>
+fn write_nums(pipe: &mut Pipe, max: i32) -> crate::Result<usize>
 {
     let mut written = 0;
     for i in 1..=max

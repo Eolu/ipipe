@@ -18,9 +18,11 @@ pub struct Pipe
 
 impl Pipe
 {
-    /// Open an existing pipe. If 'delete_on_drop' is true, the named pipe will
-    /// be deleted when the returned struct is deallocated.
-    pub fn open(path: &Path, delete_on_drop: OnCleanup) -> Result<Self>
+    /// Open an existing pipe. If on_cleanup is set to 'DeleteOnDrop' the named
+    /// pipe will be deleted when the returned struct is deallocated.
+    /// Note that this function is not platform-agnostic as unix pipe paths and 
+    /// Windows pipe paths are formatted differnetly.
+    pub fn open(path: &Path, on_cleanup: OnCleanup) -> Result<Self>
     {
         let mode = Mode::S_IWUSR | Mode::S_IRUSR 
                  | Mode::S_IRGRP | Mode::S_IWGRP;
@@ -49,7 +51,7 @@ impl Pipe
                         handle, 
                         path: path.to_path_buf(), 
                         is_closed: false,
-                        delete: delete_on_drop
+                        delete: on_cleanup
                     }).map_err(Error::from)
         }
         else
@@ -58,9 +60,49 @@ impl Pipe
         }
     }
 
-    /// Create a pipe. If 'delete_on_drop' is true, the named pipe will be
-    /// deleted when the returned struct is deallocated.
-    pub fn create(delete_on_drop: OnCleanup) -> Result<Self>
+    /// Open or create a pipe with the given name. Note that this is just a
+    /// string name, not a path.
+    pub fn with_name(name: &str, on_cleanup: OnCleanup) -> Result<Self>
+    {
+        let mode = Mode::S_IWUSR | Mode::S_IRUSR 
+                 | Mode::S_IRGRP | Mode::S_IWGRP;
+        
+        let path = PathBuf::from(format!("/tmp/{}", name));
+        if let Some(_) = path.parent()
+        {
+            match stat(&path)
+            {
+                Ok(file_stat) => 
+                {
+                    // Error out if file is not a named pipe
+                    if file_stat.st_mode & SFlag::S_IFIFO.bits() == 0
+                    {
+                        Err(Error::InvalidPath)?;
+                    }
+                },
+                Err(nix::Error::InvalidPath) | Err(nix::Error::Sys(Errno::ENOENT)) => 
+                {
+                    unistd::mkfifo(&path, mode)?;
+                },
+                err => 
+                {
+                    err?;
+                }
+            }
+
+            Pipe::open(&path, delete_on_drop)
+        }
+        else
+        {
+            Err(Error::InvalidPath)
+        }
+        Pipe::open(&Path::new(&path_string), on_cleanup)
+    }
+
+    /// Create a pipe with a randomly generated name in a tempory directory. If
+    /// on_cleanup is set to 'DeleteOnDrop' the named pipe will be deleted when
+    /// the returned struct is deallocated.
+    pub fn create(on_cleanup: OnCleanup) -> Result<Self>
     {
         let mode = Mode::S_IWUSR | Mode::S_IRUSR 
                  | Mode::S_IRGRP | Mode::S_IWGRP;
