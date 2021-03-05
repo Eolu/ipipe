@@ -64,13 +64,13 @@ use ipipe::static_pipe;
 static_pipe::init("my_out").unwrap();
 
 let mut reader = static_pipe::reader("my_pipe").unwrap();
-println!("String received: {}", reader.read_string_while(|c| c != '\0'));
+println!("String received: {}", reader.read_string_while(|c| c != '\n'));
 
 ```
 Then anywhere your program (or another program with enough permission to access the pipe) can write code like this:
 
 ```rust
-pprintln!("my_pipe", "This text will be sent over the pipe!{}", '\0');
+pprintln!("my_pipe", "This text will be sent over the pipe!");
 ```
 
 Lower level & more complete APIs to the static pipes are also planned for a future release. 
