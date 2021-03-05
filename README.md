@@ -58,7 +58,7 @@ Example path (Unix):
 # The 'static_pipe' feature
 Enabling the `static_pipe` feature allows the creation of mutex-protected static pipes that can be written to from anywhere in a way that mimics stdout. Here's an example:
 
-```
+```rust
 use ipipe::static_pipe;
 
 static_pipe::init("my_out").unwrap();
@@ -69,7 +69,7 @@ println!("Byte received: {}", reader.read_string_while(|c| c != '\0'));
 ```
 Then anywhere your program (or another program with enough permission to access the pipe) can write code like this:
 
-```
+```rust
 pprintln!("my_pipe", "This text will be sent over the pipe!{}", '\0');
 ```
 
