@@ -1,4 +1,4 @@
-# ipipe - A cross-platorm named-pipe library for Rust
+# ipipe - A cross-platform named-pipe library for Rust
 
 This library allows the creation of platform-independant named pipes. Standard Read/Write traits are implemented. Higher level/more fleshed-out APIs are under development and will be added in future versions. Improvements and PRs welcome.
 
