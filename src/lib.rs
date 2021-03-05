@@ -37,8 +37,6 @@
 //! readers and writers to the same pipe to be passed to different threads and 
 //! contexts.
 
-
-
 #[cfg(unix)]
 mod fifo_unix;
 #[cfg(unix)]
@@ -48,6 +46,10 @@ pub use fifo_unix::*;
 mod fifo_windows;
 #[cfg(windows)]
 pub use fifo_windows::*;
+
+#[cfg(feature="static_pipe")]
+#[macro_use]
+mod static_pipe;
 
 #[cfg(test)]
 mod tests;

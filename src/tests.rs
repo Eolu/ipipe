@@ -26,8 +26,27 @@ fn test_fifo() -> crate::Result<()>
     Ok(())
 }
 
-fn write_nums(pipe: &mut Pipe, max: i32) -> crate::Result<usize>
+#[cfg(feature="static_pipe")]
+#[test]
+fn test_static()
 {
+    const X: char = 'X';
+    use crate::static_pipe;
+
+    static_pipe::init("test_pipe").unwrap();
+
+    let mut reader = static_pipe::reader("test_pipe").unwrap();
+    let thread = thread::spawn(move || reader.read_string_while(|c| c != X as u8));
+
+    thread::sleep(std::time::Duration::from_millis(100));
+
+    pprintln!("test_pipe", "This came through the pipe.");
+    pprintln!("test_pipe", "{}", X);
+    println!("String sent through the pipe: {:?}", thread.join().unwrap().unwrap());
+}
+
+fn write_nums(pipe: &mut Pipe, max: i32) -> crate::Result<usize>
+{ 
     let mut written = 0;
     for i in 1..=max
     {
