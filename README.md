@@ -64,7 +64,7 @@ use ipipe::static_pipe;
 static_pipe::init("my_out").unwrap();
 
 let mut reader = static_pipe::reader("my_pipe").unwrap();
-println!("Byte received: {}", reader.read_string_while(|c| c != '\0'));
+println!("String received: {}", reader.read_string_while(|c| c != '\0'));
 
 ```
 Then anywhere your program (or another program with enough permission to access the pipe) can write code like this:
