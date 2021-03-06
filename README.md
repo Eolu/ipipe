@@ -74,3 +74,13 @@ pprintln!("my_pipe", "This text will be sent over the pipe!");
 ```
 
 Lower level & more complete APIs to the static pipes are also planned for a future release. 
+
+# Development Notes
+
+This project is very bare-bones in its current state, a proof-of-concept with some degree of practical usability at best. At this point, developers willing to contribute and improve would be very-much appreciated. Here are some long-term goals for this project:
+
+- High-level interfaces for named pipes that are as simple, easy, and idiomatic to use as Rust's print/println/stdout/stdin. These should be totally platform-agnostic, so it needs to support the lowest-common-denominator list of features at most. This level of interface should trivialize serial IPC!
+- Mid-level interfaces for named pipes that give generally platform-agnostic features, but possibly useful platform-specific interfaces as well (which should be separated into specific modules for Windows or Linux as to ease conditional compilation in cases where these might be used).
+- Possibly low-level interfaces, remove reliance on crates like nix and windows_named_pipe.
+- Better documentation & testing
+- Efficiency improvements. Make it shine.
