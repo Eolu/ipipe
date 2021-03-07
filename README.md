@@ -5,7 +5,7 @@ This library allows the creation of platform-independant named pipes. Standard R
 Example:
 ```rust
 
-use ipipe::{Pipe, OnCleanup};
+use ipipe::Pipe;
 use std::thread;
 use std::sync::{Arc, Mutex};
 
@@ -57,7 +57,7 @@ Example path (Unix):
 Enabling the `static_pipe` feature allows the creation of mutex-protected static pipes that can be written to from anywhere in a way that mimics stdout. Here's an example:
 
 ```rust
-use ipipe;
+use ipipe::*;
 
 let mut reader = ipipe::init("my_out").unwrap();
 
@@ -65,7 +65,7 @@ let mut reader = ipipe::init("my_out").unwrap();
 // let mut reader = static_pipe::get("my_pipe");
 println!("String received: {}", reader.read_string_while(|c| c != '\n'));
 
-// Drops the static pipe. Can also call `ipipe::close_all()` to dorp all static pipes.
+// Drops the static pipe. Can also call `ipipe::close_all()` to drop all static pipes.
 ipipe::close("my_out");
 ```
 Then anywhere your program (or another program with enough permission to access the pipe) can write code like this:
