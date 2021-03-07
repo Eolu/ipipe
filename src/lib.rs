@@ -49,7 +49,7 @@ pub use fifo_windows::*;
 
 #[cfg(feature="static_pipe")]
 #[macro_use]
-mod static_pipe;
+pub mod static_pipe;
 
 #[cfg(test)]
 mod tests;

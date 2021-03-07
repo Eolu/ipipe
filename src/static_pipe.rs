@@ -1,9 +1,7 @@
 use crate::{Pipe, OnCleanup};
 use lazy_static::lazy_static;
-use std::sync::{Arc, Mutex, MutexGuard};
-use std::io::Write;
-use dashmap::{DashMap, ReadOnlyView};
-use std::path::PathBuf;
+use std::sync::Mutex;
+use dashmap::DashMap;
 
 lazy_static! 
 {
@@ -13,14 +11,14 @@ lazy_static!
 #[macro_export]
 macro_rules! pprint 
 {
-    ($name:tt, $($arg:tt)*) => (crate::static_pipe::print_impl($name, format!($($arg)*).as_str()));
+    ($name:tt, $($arg:tt)*) => ($crate::static_pipe::print_impl($name, format!($($arg)*).as_str()));
 }
 
 #[macro_export]
 macro_rules! pprintln 
 {
     ($name:tt) => (print_impl($name, "\n"));
-    ($name:tt, $($arg:tt)*) => ({ crate::static_pipe::print_impl($name, format!($($arg)*).as_str()); })
+    ($name:tt, $($arg:tt)*) => ({ $crate::static_pipe::print_impl($name, format!($($arg)*).as_str()); })
 }
 
 pub fn init(name: &str) -> crate::Result<()>
