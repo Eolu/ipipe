@@ -12,7 +12,7 @@ lazy_static!
 #[macro_export]
 macro_rules! pprint 
 {
-    ($name:tt, $($arg:tt)*) => ($crate::static_pipe::print($name, format!($($arg)*).as_str()));
+    ($name:tt, $($arg:tt)*) => ($crate::print($name, format!($($arg)*).as_str()));
 }
 
 /// Print a string and a trailing newline to a static pipe
@@ -20,7 +20,7 @@ macro_rules! pprint
 macro_rules! pprintln 
 {
     ($name:tt) => (print_impl($name, "\n"));
-    ($name:tt, $($arg:tt)*) => ({ $crate::static_pipe::print($name, format!($($arg)*).as_str()); })
+    ($name:tt, $($arg:tt)*) => ({ $crate::print($name, format!($($arg)*).as_str()); })
 }
 
 /// Initialize a static pipe and return a handle to it.
