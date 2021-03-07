@@ -1,5 +1,5 @@
 # Version 0.3.2
-- Fixed a sbug with static pipes that prevented their use entirely.
+- Fixed a bug with static pipes that prevented their use entirely.
 
 # Version 0.3
 - API improvements, better tests, bug fixes, documentation fixes.
