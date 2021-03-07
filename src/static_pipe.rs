@@ -11,14 +11,14 @@ lazy_static!
 #[macro_export]
 macro_rules! pprint 
 {
-    ($name:tt, $($arg:tt)*) => ($crate::static_pipe::print_impl($name, format!($($arg)*).as_str()));
+    ($name:tt, $($arg:tt)*) => ($crate::static_pipe::print($name, format!($($arg)*).as_str()));
 }
 
 #[macro_export]
 macro_rules! pprintln 
 {
     ($name:tt) => (print_impl($name, "\n"));
-    ($name:tt, $($arg:tt)*) => ({ $crate::static_pipe::print_impl($name, format!($($arg)*).as_str()); })
+    ($name:tt, $($arg:tt)*) => ({ $crate::static_pipe::print($name, format!($($arg)*).as_str()); })
 }
 
 pub fn init(name: &str) -> crate::Result<()>
@@ -33,7 +33,7 @@ pub fn reader(name: &str) -> Option<Pipe>
 }
 
 #[inline]
-pub(super) fn print_impl(name: &str, s: &str)
+pub fn print(name: &str, s: &str)
 {
     match PIPES.get(name)
     {
