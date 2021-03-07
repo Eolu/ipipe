@@ -62,7 +62,7 @@ impl Pipe
 
     /// Open or create a pipe with the given name. Note that this is just a
     /// string name, not a path.
-    pub fn with_name(name: &str, on_cleanup: OnCleanup) -> Result<Self>
+    pub fn with_name(name: &str) -> Result<Self>
     {
         let mode = Mode::S_IWUSR | Mode::S_IRUSR 
                  | Mode::S_IRGRP | Mode::S_IWGRP;
@@ -90,7 +90,7 @@ impl Pipe
                 }
             }
 
-            Pipe::open(&path, on_cleanup)
+            Pipe::open(&path, OnCleanup::NoDelete)
         }
         else
         {
@@ -101,7 +101,7 @@ impl Pipe
     /// Create a pipe with a randomly generated name in a tempory directory. If
     /// on_cleanup is set to 'DeleteOnDrop' the named pipe will be deleted when
     /// the returned struct is deallocated.
-    pub fn create(on_cleanup: OnCleanup) -> Result<Self>
+    pub fn create() -> Result<Self>
     {
         let mode = Mode::S_IWUSR | Mode::S_IRUSR 
                  | Mode::S_IRGRP | Mode::S_IWGRP;
@@ -134,7 +134,7 @@ impl Pipe
                 }
             }
 
-            Pipe::open(&path, on_cleanup)
+            Pipe::open(&path, OnCleanup::NoDelete)
         }
         else
         {

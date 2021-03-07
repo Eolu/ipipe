@@ -1,4 +1,4 @@
-use crate::{Pipe, OnCleanup};
+use crate::Pipe;
 use lazy_static::lazy_static;
 use std::sync::Mutex;
 use dashmap::DashMap;
@@ -8,12 +8,14 @@ lazy_static!
     static ref PIPES: DashMap<String, Mutex<Pipe>> = DashMap::new();
 }
 
+/// Print a string to a static pipe
 #[macro_export]
 macro_rules! pprint 
 {
     ($name:tt, $($arg:tt)*) => ($crate::static_pipe::print($name, format!($($arg)*).as_str()));
 }
 
+/// Print a string and a trailing newline to a static pipe
 #[macro_export]
 macro_rules! pprintln 
 {
@@ -21,17 +23,39 @@ macro_rules! pprintln
     ($name:tt, $($arg:tt)*) => ({ $crate::static_pipe::print($name, format!($($arg)*).as_str()); })
 }
 
-pub fn init(name: &str) -> crate::Result<()>
+/// Initialize a static pipe and return a handle to it.
+pub fn init(name: &str) -> crate::Result<Pipe>
 {
-    PIPES.insert(name.to_string(), Mutex::from(Pipe::with_name(name, OnCleanup::Delete)?));
-    Ok(())
+    let pipe = Pipe::with_name(name)?;
+    let reader = pipe.clone();
+    PIPES.insert(name.to_string(), Mutex::from(pipe));
+    Ok(reader)
 }
 
-pub fn reader(name: &str) -> Option<Pipe>
+/// Get a handle to an existing static pipe
+pub fn get(name: &str) -> Option<Pipe>
 {
     PIPES.get(name).map(|pipe| pipe.lock().unwrap().clone())
 }
 
+/// Closes a static pipe
+pub fn close(name: &str)
+{
+    match PIPES.remove(name)
+    {
+        Some((_, pipe)) => { drop(pipe.lock().unwrap()) }
+        None => {}
+    }
+}
+
+/// Closes all static pipes
+pub fn close_all()
+{
+    PIPES.clear()
+}
+
+/// The lowest-level static-pipe print function. Panics if pipe is not 
+/// initialized.
 #[inline]
 pub fn print(name: &str, s: &str)
 {

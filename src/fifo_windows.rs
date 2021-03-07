@@ -34,14 +34,14 @@ impl Pipe
 
     /// Open a pipe with the given name. Note that this is just a string name,
     /// not a path.
-    pub fn with_name(name: &str, on_cleanup: OnCleanup) -> Result<Self>
+    pub fn with_name(name: &str) -> Result<Self>
     {
         let path_string = format!("\\\\.\\pipe\\{}", name);
-        Pipe::open(&Path::new(&path_string), on_cleanup)
+        Pipe::open(&Path::new(&path_string), OnCleanup::NoDelete)
     }
 
     /// Open a pipe with a randomly generated name.
-    pub fn create(on_cleanup: OnCleanup) -> Result<Self>
+    pub fn create() -> Result<Self>
     {
         // Generate a random path name
         let path_string = format!("\\\\.\\pipe\\pipe_{}_{}", std::process::id(),thread_rng()
@@ -49,7 +49,7 @@ impl Pipe
             .take(15)
             .collect::<String>());
 
-        Pipe::open(&Path::new(&path_string), on_cleanup)
+        Pipe::open(&Path::new(&path_string), OnCleanup::NoDelete)
     }
 
     /// Close the pipe. If the pipe is not closed before deallocation, this will
