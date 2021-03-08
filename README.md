@@ -8,26 +8,30 @@ Example:
 use ipipe::Pipe;
 use std::thread;
 use std::sync::{Arc, Mutex};
+use std::io::{BufRead, BufWriter};
+
+const CANCEL: u8 = 24;
 
 fn main()
 {
-    let mut pipe = Pipe::create()?;
+    let mut pipe = Pipe::create().unwrap();
     println!("Name: {}", pipe.path().display());
 
     let writer = pipe.clone();
     thread::spawn(move || print_nums(writer));
-    print!("{}", pipe.read_string_while(|c| c != CANCEL).unwrap());
+    for line in BufReader::new(pipe).lines()
+    {
+        println!("{}", line.unwrap());
+    }
 }
 
-fn print_nums(mut pipe: Pipe) -> ipipe::Result<usize>
+fn print_nums(mut pipe: Pipe)
 {
-    let mut written = 0;
     for i in 1..=10
     {
-        written += pipe.write_string(&format!("{}\n", i))?;
+        writeln!(&mut pipe, "{}", i).unwrap();
     }
-    written += pipe.write_byte(CANCEL)?;
-    Ok(written)
+    write!(&mut pipe, "{}", CANCEL as char).unwrap();
 }
 ```
 
@@ -58,12 +62,14 @@ Enabling the `static_pipe` feature allows the creation of mutex-protected static
 
 ```rust
 use ipipe::*;
+use std::io::{BufRead, BufWriter};
 
 let mut reader = ipipe::init("my_out").unwrap();
 
 // You can get a handle to an already-initialized pipe like this:
-// let mut reader = static_pipe::get("my_pipe");
-println!("String received: {}", reader.read_string_while(|c| c != '\n'));
+// let mut reader = ipipe::get("my_pipe");
+let s = BufReader::new(pipe).lines().next().unwrap();
+println!("String received: {}", s);
 
 // Drops the static pipe. Can also call `ipipe::close_all()` to drop all static pipes.
 ipipe::close("my_out");
@@ -74,14 +80,8 @@ Then anywhere your program (or another program with enough permission to access 
 pprintln!("my_pipe", "This text will be sent over the pipe!");
 ```
 
-Lower level & more complete APIs to the static pipes are also planned for a future release. 
+Lower level as well as more complete/intuitive APIs to the static pipes are also planned for a future release. 
 
 # Development Notes
 
-This project is very bare-bones in its current state, a proof-of-concept with some degree of practical usability at best. At this point, developers willing to contribute and improve would be very-much appreciated. Here are some long-term goals for this project:
-
-- High-level interfaces for named pipes that are as simple, easy, and idiomatic to use as Rust's print/println/stdout/stdin. These should be totally platform-agnostic, so it needs to support the lowest-common-denominator list of features at most. This level of interface should trivialize serial IPC!
-- Mid-level interfaces for named pipes that give generally platform-agnostic features, but possibly useful platform-specific interfaces as well (which should be separated into specific modules by OS as to ease conditional compilation in cases where these might be used).
-- Possibly low-level interfaces, remove reliance on crates like nix and windows_named_pipe.
-- Better documentation & testing
-- Efficiency improvements. Make it shine.
+This project is very bare-bones in its current state, a proof-of-concept with some degree of practical usability at best. At this point, developers willing to contribute and improve would be very-much appreciated. As Windows named pipes work substantially different than Unix named pipes, there are likely unintuitive "features" of this crate in its current state when traveling from one platform to another. Sniping those is top priority.

@@ -7,9 +7,9 @@
 //! ```
 //! use ipipe::Pipe; 
 //! use std::io::BufRead;
-//! fn reader() -> ipipe::Result<()>
+//! fn reader()
 //! {
-//!     let mut pipe = Pipe::with_name("test_pipe")?;
+//!     let mut pipe = Pipe::with_name("test_pipe").unwrap();
 //!     println!("Pipe path: {}", pipe.path().display());
 //!
 //!     // Read lines
@@ -17,7 +17,6 @@
 //!     {
 //!         println!("{}", line.unwrap());
 //!     }
-//!     Ok(())
 //! }
 //! ```
 //! 
@@ -25,11 +24,10 @@
 //! ```
 //! use ipipe::Pipe; 
 //! use std::io::Write;
-//! fn writer() -> ipipe::Result<()>
+//! fn writer()
 //! {
-//!     let mut pipe = Pipe::with_name("test_pipe")?;
-//!     pipe.write("This is only a test.\n".as_bytes())?;
-//!     Ok(())
+//!     let mut pipe = Pipe::with_name("test_pipe").unwrap();
+//!     writeln!(&mut pipe, "This is only a test.").unwrap();
 //! }
 //! ```
 //! You can also use `Pipe::create` to open a pipe with a randomly-generated
