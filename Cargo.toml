@@ -1,6 +1,6 @@
 [package]
 name = "ipipe"
-version = "0.4.0"
+version = "0.4.1"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 authors = ["Griffin O'Neill <gsoneill1003@gmail.com>"]
@@ -15,6 +15,7 @@ categories = ["filesystem", "os::unix-apis", "os::windows-apis", "api-bindings"]
 documentation = "https://docs.rs/ipipe"
 
 [features]
+default = ["static_pipe"]
 static_pipe = ["lazy_static", "dashmap"]
 
 [dependencies]

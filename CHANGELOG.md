@@ -1,3 +1,6 @@
+# Version 0.4.1
+- Made static_pipe a default feature.
+
 # Version 0.4
 - Replaced all non-idiomatic I/O interfaces with standard traits (Read, Write, etc). Interfaces should be much more stable now. Static pipes are the exception here, more changes will likely come down the road.
 - Slightly better testing and documentation.
