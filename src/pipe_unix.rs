@@ -150,52 +150,23 @@ impl Pipe
         unistd::close(self.handle).map_err(Error::from)
     }
 
-    /// Write a single byte to the pipe
-    pub fn write_byte(&mut self, buf: u8) -> Result<usize>
-    {
-        unistd::write(self.handle, &[buf]).map_err(Error::from)
-    }
-
-    /// Write an array of bytes to the pipe
-    pub fn write_bytes(&mut self, buf: &[u8]) -> Result<usize>
-    {
-        unistd::write(self.handle, buf).map_err(Error::from)
-    }
-
-    /// Writes a string to the pipe
-    pub fn write_string(&mut self, s: &str) -> Result<usize>
-    {
-        unistd::write(self.handle, s.as_bytes()).map_err(Error::from)
-    }
-
-    /// Read a single byte
-    pub fn read_byte(&mut self) -> Result<u8>
-    {
-        let buf: &mut [u8; 1] = &mut [0];
-        unistd::read(self.handle, buf)?;
-        Ok(buf[0])
-    }
-
-    /// Reads the given number of bytes and returns the result in a vector.
-    pub fn read_bytes(&mut self, size: usize) -> Result<Vec<u8>>
-    {
-        let mut buf: Vec<u8> = Vec::with_capacity(size);
-        unistd::read(self.handle, &mut buf)?;
-        Ok(buf)
-    }
-
-    /// Reads the given number of bytes and returns the result as a string.
-    pub fn read_string(&mut self, size: usize) -> Result<String>
-    {
-        let mut buf: Vec<u8> = Vec::with_capacity(size);
-        unistd::read(self.handle, &mut buf)?;
-        String::from_utf8(buf).map_err(Error::from)
-    }
-
     /// Flush input and output.
     pub fn flush_pipe(&self) -> Result<()>
     {
         tcflush(self.handle, FlushArg::TCIOFLUSH).map_err(Error::from)
+    }
+}
+
+impl std::io::Write for Pipe
+{
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> 
+    {
+        unistd::write(self.handle, bytes).map_err(Error::from).map_err(std::io::Error::from)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> 
+    {
+        tcflush(self.handle, FlushArg::TCOFLUSH).map_err(Error::from).map_err(std::io::Error::from)
     }
 }
 

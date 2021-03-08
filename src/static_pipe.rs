@@ -1,6 +1,6 @@
 use crate::Pipe;
 use lazy_static::lazy_static;
-use std::sync::Mutex;
+use std::{io::Write, sync::Mutex};
 use dashmap::DashMap;
 
 lazy_static! 
@@ -62,7 +62,7 @@ pub fn print(name: &str, s: &str)
     match PIPES.get(name)
     {
         None => panic!("Pipe not initialized"),
-        Some(pipe) => match pipe.lock().as_mut().unwrap().write_string(s)
+        Some(pipe) => match pipe.lock().as_mut().unwrap().write(s.as_bytes())
         {
             Ok(_) => {}
             Err(e) => panic!(e.to_string())

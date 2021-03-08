@@ -1,12 +1,20 @@
 use crate::Pipe;
-use std::thread;
+use std::{io::{Read, Write}, thread};
 use std::sync::{Arc, Mutex};
-
-const CANCEL: u8 = 24;
 
 #[test]
 fn test_pipe() -> crate::Result<()>
 {
+    fn write_nums(pipe: &mut Pipe, max: i32) -> crate::Result<usize>
+    { 
+        let mut written = 0;
+        for i in 1..=max
+        {
+            written += pipe.write(&format!("{}\n", i).as_bytes())?;
+        }
+        written += pipe.write(&['X' as u8])?;
+        Ok(written)
+    }
     let mut pipe = Pipe::create()?;
     println!("Pipe path: {}", pipe.path().display());
     let writer = Arc::new(Mutex::from(pipe.clone()));
@@ -14,50 +22,48 @@ fn test_pipe() -> crate::Result<()>
 
     let thread = thread::spawn(move || write_nums(&mut thread_writer.lock().as_mut().unwrap(), 10));
 
-    print!("{}", pipe.read_string_while(|c| c != CANCEL).unwrap());
+    let result = read_until_x(&mut pipe).unwrap();
+    print!("{}", result);
+    assert_eq!("1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n", result);
     println!("Bytes sent through the pipe: {:?}", thread.join().unwrap());
 
     let thread_writer = writer.clone();
     let thread = thread::spawn(move || write_nums(&mut thread_writer.lock().as_mut().unwrap(), 3));
 
-    print!("{}", pipe.read_string_while(|c| c != CANCEL).unwrap());
+    let result = read_until_x(&mut pipe).unwrap();
+    print!("{}", result);
+    assert_eq!("1\n2\n3\n", result);
     println!("Bytes sent through the pipe: {:?}", thread.join().unwrap());
 
     Ok(())
 }
 
-fn write_nums(pipe: &mut Pipe, max: i32) -> crate::Result<usize>
-{ 
-    let mut written = 0;
-    for i in 1..=max
-    {
-        written += pipe.write_string(&format!("{}\n", i))?;
-    }
-    written += pipe.write_byte(CANCEL)?;
-    Ok(written)
-}
 
 #[test]
 fn test_pipe_2() -> crate::Result<()>
 {
-    let mut pipe = Pipe::create()?;
-    println!("Name: {}", pipe.path().display());
-
-    let writer = pipe.clone();
-    thread::spawn(move || write_nums_2(writer));
-    print!("{}", pipe.read_string_while(|c| c != CANCEL).unwrap());
-    Ok(())
-}
-
-fn write_nums_2(mut pipe: Pipe) -> crate::Result<usize>
-{
-    let mut written = 0;
-    for i in 1..=10
+    use std::io::{BufRead, BufWriter};
+    let pipe = Pipe::create()?;
+    let mut writer = BufWriter::new(pipe.clone());
+    thread::spawn(move || -> std::io::Result<()>
+        {
+            for i in 1..5
+            {
+                writeln!(&mut writer, "This is line #{}", i)?;
+            }
+            Ok(())
+        });
+    for (i, line) in std::io::BufReader::new(pipe).lines().enumerate()
     {
-        written += pipe.write_string(&format!("{}\n", i))?;
+        let line = line?;
+        println!("{}", line);
+        assert_eq!(format!("This is line #{}", i + 1), line);
+        if i == 3
+        {
+            break;
+        }
     }
-    written += pipe.write_byte(CANCEL)?;
-    Ok(written)
+    Ok(())
 }
 
 #[cfg(feature="static_pipe")]
@@ -68,12 +74,27 @@ fn test_static()
     use crate::static_pipe;
 
     let mut reader = static_pipe::init("test_pipe").unwrap();
-
-    let thread = thread::spawn(move || reader.read_string_while(|c| c != X as u8));
+    let thread = thread::spawn(move || read_until_x(&mut reader));
 
     thread::sleep(std::time::Duration::from_millis(100));
 
     pprintln!("test_pipe", "This came through the pipe.");
     pprintln!("test_pipe", "{}", X);
-    println!("String sent through the pipe: {:?}", thread.join().unwrap().unwrap());
+    let result = thread.join().unwrap().unwrap();
+    println!("String sent through the pipe: {:?}", result);
+    assert_eq!("This came through the pipe.", result);
+}
+
+fn read_until_x(pipe: &mut Pipe) -> std::io::Result<String>
+{
+    let mut buf: [u8; 1] = [0];
+    let mut container = String::new();
+    loop
+    {
+        match pipe.read(&mut buf)
+        {
+            Ok(_) if buf[0] != 'X' as u8 => container.push(buf[0] as char),
+            _ => { break Ok(container); }
+        }
+    }
 }

@@ -1,3 +1,7 @@
+# Version 0.4
+- Replaced all non-idiomatic I/O interfaces with standard traits (Read, Write, etc). Interfaces should be much more stable now. Static pipes are the exception here, more changes will likely come down the road.
+- Slightly better testing and documentation.
+
 # Version 0.3.2
 - Fixed a bug with static pipes that prevented their use entirely.
 

@@ -5,24 +5,31 @@
 //! To get started quickly, try using Pipe::with_name to create a pipe with a 
 //! given name.
 //! ```
-//! use ipipe::{Pipe, OnCleanup};
-//! fn main() -> ipipe::Result<()>
+//! use ipipe::Pipe; 
+//! use std::io::BufRead;
+//! fn reader() -> ipipe::Result<()>
 //! {
-//!     let mut pipe = Pipe::with_name("test_pipe", OnCleanup::Delete)?;
+//!     let mut pipe = Pipe::with_name("test_pipe")?;
 //!     println!("Pipe path: {}", pipe.path().display());
 //!
-//!     // Read a line
-//!     println!("{}", pipe.read_string_while(|c| c != '\n').unwrap());
+//!     // Read lines
+//!     for line in std::io::BufReader::new(pipe).lines()
+//!     {
+//!         println!("{}", line.unwrap());
+//!     }
 //!     Ok(())
 //! }
 //! ```
 //! 
-//! Then in another program:
+//! Then in another program or thread:
 //! ```
-//! fn main() -> ipipe::Result<()>
+//! use ipipe::Pipe; 
+//! use std::io::Write;
+//! fn writer() -> ipipe::Result<()>
 //! {
-//!     let mut pipe = Pipe::with_name("test_pipe", OnCleanup::Delete)?;
-//!     pipe.write_string("This is only a test.\n")?;
+//!     let mut pipe = Pipe::with_name("test_pipe")?;
+//!     pipe.write("This is only a test.\n".as_bytes())?;
+//!     Ok(())
 //! }
 //! ```
 //! You can also use `Pipe::create` to open a pipe with a randomly-generated
@@ -38,14 +45,14 @@
 //! contexts.
 
 #[cfg(unix)]
-mod fifo_unix;
+mod pipe_unix;
 #[cfg(unix)]
-pub use fifo_unix::*;
+pub use pipe_unix::*;
 
 #[cfg(windows)]
-mod fifo_windows;
+mod pipe_windows;
 #[cfg(windows)]
-pub use fifo_windows::*;
+pub use pipe_windows::*;
 
 #[cfg(feature="static_pipe")]
 #[macro_use]
@@ -63,96 +70,12 @@ pub enum OnCleanup
     NoDelete
 }
 
-/// Iterator over bytes from the pipe
-pub struct FifoIterator<'a>(&'a mut Pipe);
-impl Iterator for FifoIterator<'_>
-{
-    type Item = u8;
-
-    fn next(&mut self) -> Option<u8> 
-    {
-        if self.0.is_closed
-        {
-            None
-        }
-        else
-        {
-            match self.0.read_byte()
-            {
-                Ok(byte) => Some(byte),
-                Err(err) => 
-                {
-                    eprintln!("{:?}", err);
-                    None
-                }
-            }
-        }
-    }
-}
-
 impl Pipe
 {
     /// Return the path to this named pipe
     pub fn path(&self) -> &std::path::Path
     {
         &self.path
-    }
-
-    /// Creates an iterator that reads bytes until the pipe is closed.
-    pub fn iter(&mut self) -> FifoIterator
-    {
-        FifoIterator(self)
-    }
-
-    /// Reads until the given predicate is false, and returns the result as a 
-    /// vector of bytes.
-    pub fn read_bytes_while(&mut self, predicate: impl Fn(u8) -> bool) -> Result<Vec<u8>>
-    {
-        let mut buf: Vec<u8> = Vec::new();
-        loop
-        {
-            let byte = self.read_byte()?;
-            if predicate(byte)
-            {
-                buf.push(byte);
-            } 
-            else
-            {
-                break Ok(buf)
-            }
-        }
-    }
-
-    /// Reads until the given predicate is false, and returns the result as a 
-    /// string.
-    pub fn read_string_while(&mut self, predicate: impl Fn(u8) -> bool) -> Result<String>
-    {
-        let mut buf: Vec<u8> = Vec::new();
-        loop
-        {
-            let byte = self.read_byte()?;
-            if predicate(byte)
-            {
-                buf.push(byte);
-            } 
-            else
-            {
-                break String::from_utf8(buf).map_err(Error::from)
-            }
-        }
-    }
-}
-
-impl std::io::Write for Pipe
-{
-    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> 
-    {
-        self.write_bytes(bytes).map_err(std::io::Error::from)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> 
-    {
-        self.flush_pipe().map_err(std::io::Error::from)
     }
 }
 

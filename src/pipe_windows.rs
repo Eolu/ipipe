@@ -1,5 +1,5 @@
 use super::{Result, Error, OnCleanup};
-use std::{io::Read, path::Path};
+use std::path::Path;
 use windows_named_pipe::{PipeStream, PipeListener};
 use std::io::Write;
 use rand::{thread_rng, Rng, distributions::Alphanumeric};
@@ -62,94 +62,6 @@ impl Pipe
         Ok(())
     }
 
-    /// Write a single byte to the pipe
-    pub fn write_byte(&mut self, buf: u8) -> Result<usize>
-    {
-        self.write_bytes(&[buf])
-    }
-
-    /// Write an array of bytes to the pipe
-    pub fn write_bytes(&mut self, buf: &[u8]) -> Result<usize>
-    {
-        self.init_reader()?;
-        match &mut self.handle
-        {
-            None => unreachable!(),
-            Some(stream) => stream.write(buf)
-        }.map_err(Error::from)
-    }
-
-    /// Writes a string to the pipe
-    pub fn write_string(&mut self, s: &str) -> Result<usize>
-    {
-        self.init_reader()?;
-        self.write_bytes(s.as_bytes())
-    }
-
-    /// Read a single byte
-    pub fn read_byte(&mut self) -> Result<u8>
-    {
-        self.init_listener()?;
-        match &mut self.listener
-        {
-            None => unreachable!(),
-            Some(listener) => 
-            {
-                let buf = &mut [0 as u8];
-                match listener.read(buf)
-                {
-                    Err(e) => 
-                    {
-                        if let Some(err) = e.raw_os_error()
-                        {
-                            if err as u32 != 109
-                            {
-                                return Err(Error::from(e));
-                            }
-                        }
-                    },
-                    _ => ()
-                }
-                Ok(buf[0])
-            }
-        }
-    }
-
-    /// Reads the given number of bytes and returns the result in a vector.
-    pub fn read_bytes(&mut self, size: usize) -> Result<Vec<u8>>
-    {
-        self.init_listener()?;
-        match &mut self.listener
-        {
-            None => unreachable!(),
-            Some(listener) => 
-            {
-                let mut buf = Vec::with_capacity(size);
-                match listener.read_exact(&mut buf)
-                {
-                    Err(e) => 
-                    {
-                        if let Some(err) = e.raw_os_error()
-                        {
-                            if err as u32 != 109
-                            {
-                                return Err(Error::from(e));
-                            }
-                        }
-                    },
-                    _ => ()
-                }
-                Ok(buf)
-            }
-        }
-    }
-
-    /// Reads the given number of bytes and returns the result as a string.
-    pub fn read_string(&mut self, size: usize) -> Result<String>
-    {
-        self.read_bytes(size).map(|buf| String::from_utf8_lossy(&buf).into_owned())
-    }
-
     /// Flush input and output.
     pub fn flush_pipe(&mut self) -> Result<()>
     {
@@ -196,6 +108,32 @@ impl Pipe
             self.listener = Some(listener);
         }
         Ok(())
+    }
+}
+
+impl std::io::Write for Pipe
+{
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> 
+    {
+        self.init_reader()?;
+        match &mut self.handle
+        {
+            None => unreachable!(),
+            Some(stream) => stream.write(bytes)
+        }.map_err(std::io::Error::from)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> 
+    {
+        match &mut self.handle
+        {
+            None => self.init_reader(),
+            Some(_) => 
+            {
+                self.handle = None;
+                self.init_reader()
+            }
+        }.map_err(std::io::Error::from)
     }
 }
 
