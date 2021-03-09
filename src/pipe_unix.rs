@@ -98,9 +98,7 @@ impl Pipe
         }
     }
 
-    /// Create a pipe with a randomly generated name in a tempory directory. If
-    /// on_cleanup is set to 'DeleteOnDrop' the named pipe will be deleted when
-    /// the returned struct is deallocated.
+    /// Create a pipe with a randomly generated name in a tempory directory.
     pub fn create() -> Result<Self>
     {
         let mode = Mode::S_IWUSR | Mode::S_IRUSR 
