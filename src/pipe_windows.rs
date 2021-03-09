@@ -36,7 +36,7 @@ impl Pipe
     /// not a path.
     pub fn with_name(name: &str) -> Result<Self>
     {
-        let path_string = format!("\\\\.\\pipe\\{}", name);
+        let path_string = format!(r"\\.\pipe\{}", name);
         Pipe::open(&Path::new(&path_string), OnCleanup::NoDelete)
     }
 
@@ -44,7 +44,7 @@ impl Pipe
     pub fn create() -> Result<Self>
     {
         // Generate a random path name
-        let path_string = format!("\\\\.\\pipe\\pipe_{}_{}", std::process::id(),thread_rng()
+        let path_string = format!(r"\\.\pipe\pipe_{}_{}", std::process::id(),thread_rng()
             .sample_iter(&Alphanumeric)
             .take(15)
             .collect::<String>());
