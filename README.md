@@ -7,7 +7,6 @@ Example:
 
 use ipipe::Pipe;
 use std::thread;
-use std::sync::{Arc, Mutex};
 use std::io::{BufRead, BufWriter};
 
 const CANCEL: u8 = 24;

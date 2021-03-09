@@ -1,3 +1,7 @@
+# Version 0.4.2
+- Windows paths now use raw strings.
+- Documentation cleanup.
+
 # Version 0.4.1
 - Made static_pipe a default feature.
 
