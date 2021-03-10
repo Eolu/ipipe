@@ -12,7 +12,7 @@ pub struct Pipe
 {
     handle: std::os::unix::io::RawFd,
     pub(super) path: PathBuf,
-    pub(super) is_closed: bool,
+    pub(super) is_slave: bool,
     delete: OnCleanup
 }
 
@@ -50,7 +50,7 @@ impl Pipe
                     { 
                         handle, 
                         path: path.to_path_buf(), 
-                        is_closed: false,
+                        is_slave: false,
                         delete: on_cleanup
                     }).map_err(Error::from)
         }
@@ -99,6 +99,7 @@ impl Pipe
     }
 
     /// Create a pipe with a randomly generated name in a tempory directory.
+    #[cfg(feature="rand")]
     pub fn create() -> Result<Self>
     {
         let mode = Mode::S_IWUSR | Mode::S_IRUSR 
@@ -140,14 +141,6 @@ impl Pipe
         }
     }
 
-    /// Close the pipe. If the pipe is not closed before deallocation, this will
-    /// be called automatically on drop.
-    pub fn close(&mut self) -> Result<()>
-    {
-        self.is_closed = true;
-        unistd::close(self.handle).map_err(Error::from)
-    }
-
     /// Flush input and output.
     pub fn flush_pipe(&self) -> Result<()>
     {
@@ -182,17 +175,22 @@ impl Drop for Pipe
 {
     fn drop(&mut self) 
     {
-        if !self.is_closed
+        if !self.is_slave
         {
-            if let Err(e) = self.close()
+            if let Err(e) = unistd::close(self.handle).map_err(Error::from).and_then(|_|
+            {
+                if let OnCleanup::Delete = self.delete
+                {
+                    std::fs::remove_file(&self.path).map_err(Error::from)
+                }
+                else
+                {
+                    Ok(())
+                }
+            })
             {
                 eprintln!("Error closing pipe: {:?}", e)
             }
-        }
-
-        if let OnCleanup::Delete = self.delete
-        {
-            std::fs::remove_file(&self.path).expect("Pipe removal Failed")
         }
     }
 }
@@ -207,7 +205,7 @@ impl Clone for Pipe
         { 
             handle: self.handle,
             path: self.path.clone(), 
-            is_closed: true,
+            is_slave: true,
             delete: OnCleanup::NoDelete
         }
     }

@@ -1,3 +1,10 @@
+# Version 0.5
+- Removed the `Pipe::close()` method. The drop trait now does all the work that once did.
+- Renamed some internal interfaces to be more clear.
+- Added the `Pipe::name()` method
+- `rand` is now optional (default) feature, as its only purpose is a single method that generates a pipe with a random name.
+- Documentation updates.
+
 # Version 0.4.2
 - Windows paths now use raw strings.
 - Documentation cleanup.

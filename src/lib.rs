@@ -75,6 +75,12 @@ impl Pipe
     {
         &self.path
     }
+
+    /// Gets the name of this pipe
+    pub fn name(&self) -> Option<&std::ffi::OsStr>
+    {
+        self.path().file_name()
+    }
 }
 
 /// Standard error type used by this library

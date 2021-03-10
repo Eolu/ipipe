@@ -10,7 +10,7 @@ pub struct Pipe
     handle: Option<PipeStream>,
     listener: Option<PipeStream>,
     pub(super) path: std::path::PathBuf,
-    pub(super) is_closed: bool
+    pub(super) is_slave: bool
 }
 
 unsafe impl Send for Pipe {}
@@ -18,9 +18,9 @@ unsafe impl Sync for Pipe {}
 
 impl Pipe
 {
-    /// Open a pipe at an existing path. Note that this function
-    /// is not platform-agnostic as unix pipe paths and Windows 
-    /// pipe paths are are formatted differnetly.
+    /// Open a pipe at an existing path. Note that this function is not 
+    /// platform-agnostic as unix pipe paths and Windows pipe paths are are 
+    /// formatted differently. The second parameter is unused on Windows.
     pub fn open(path: &Path, _: OnCleanup) -> Result<Self>
     {
         Ok(Pipe 
@@ -28,7 +28,7 @@ impl Pipe
             handle: None,
             listener: None,
             path: path.to_path_buf(), 
-            is_closed: false
+            is_slave: false
         })
     }
 
@@ -41,6 +41,7 @@ impl Pipe
     }
 
     /// Open a pipe with a randomly generated name.
+    #[cfg(feature="rand")]
     pub fn create() -> Result<Self>
     {
         // Generate a random path name
@@ -52,16 +53,6 @@ impl Pipe
         Pipe::open(&Path::new(&path_string), OnCleanup::NoDelete)
     }
 
-    /// Close the pipe. If the pipe is not closed before deallocation, this will
-    /// be called automatically on drop.
-    pub fn close(&mut self) -> Result<()>
-    {
-        self.is_closed = true;
-        self.handle = None;
-        self.listener = None;
-        Ok(())
-    }
-
     /// Flush input and output.
     pub fn flush_pipe(&mut self) -> Result<()>
     {
@@ -70,12 +61,12 @@ impl Pipe
         {
             None => 
             {
-                self.init_reader()?;
+                self.init_writer()?;
             }
             Some(_) => 
             {
                 self.handle = None;
-                self.init_reader()?;
+                self.init_writer()?;
             }
         }
 
@@ -89,8 +80,8 @@ impl Pipe
         Ok(())
     }
 
-    /// Initializes the pipe for reading
-    fn init_reader(&mut self) -> Result<()>
+    /// Initializes the pipe for writing
+    fn init_writer(&mut self) -> Result<()>
     {
         if self.handle.is_none()
         {
@@ -99,7 +90,7 @@ impl Pipe
         Ok(())
     }
 
-    /// Initializes the pipe for writing
+    /// Initializes the pipe for reading
     fn init_listener(&mut self) -> Result<()>
     {
         if self.listener.is_none()
@@ -115,7 +106,7 @@ impl std::io::Write for Pipe
 {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> 
     {
-        self.init_reader()?;
+        self.init_writer()?;
         match &mut self.handle
         {
             None => unreachable!(),
@@ -127,11 +118,11 @@ impl std::io::Write for Pipe
     {
         match &mut self.handle
         {
-            None => self.init_reader(),
+            None => self.init_writer(),
             Some(_) => 
             {
                 self.handle = None;
-                self.init_reader()
+                self.init_writer()
             }
         }.map_err(std::io::Error::from)
     }
@@ -178,12 +169,10 @@ impl Drop for Pipe
 {
     fn drop(&mut self) 
     {
-        if !self.is_closed
+        if !self.is_slave
         {
-            if let Err(e) = self.close()
-            {
-                eprintln!("Error closing pipe: {:?}", e)
-            }
+            self.handle = None;
+            self.listener = None;
         }
     }
 }
@@ -199,7 +188,7 @@ impl Clone for Pipe
             handle: None,
             listener: None,
             path: self.path.clone(), 
-            is_closed: true
+            is_slave: true
         }
     }
 }

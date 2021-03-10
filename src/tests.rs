@@ -98,3 +98,10 @@ fn read_until_x(pipe: &mut Pipe) -> std::io::Result<String>
         }
     }
 }
+
+#[test]
+fn test_name()
+{
+    let pipe = Pipe::with_name("test_name").unwrap();
+    assert_eq!(pipe.name().unwrap(), "test_name");
+}

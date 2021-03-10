@@ -56,8 +56,10 @@ Example path (Unix):
 
 `Pipe::with_name` allows a pipe name to be specified.
 
-# The 'static_pipe' feature
-Enabling the `static_pipe` feature allows the creation of mutex-protected static pipes that can be written to from anywhere in a way that mimics stdout. Here's an example:
+
+# Features
+- ### static_pipe
+The `static_pipe` default feature allows the creation of mutex-protected static pipes that can be written to from anywhere in a way that mimics stdout. Here's an example:
 
 ```rust
 use ipipe::*;
@@ -80,6 +82,9 @@ pprintln!("my_pipe", "This text will be sent over the pipe!");
 ```
 
 Lower level as well as more complete/intuitive APIs to the static pipes are also planned for a future release. 
+
+- ### rand
+The 'rand' default feature will allow calling `Pipe::create()` to open a pipe with a randomly-generated name. The generated name will have the following format: `pipe_[process pid]_[15 random alphnumeric characters]`. Equivalent to `Pipe::with_name(&str)` in every other way.
 
 # Development Notes
 
