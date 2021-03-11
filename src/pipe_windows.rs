@@ -1,16 +1,29 @@
-use super::{Result, Error, OnCleanup};
+use super::{Result, OnCleanup};
 use std::path::Path;
-use windows_named_pipe::{PipeStream, PipeListener};
-use std::io::Write;
+use std::io::{self, Read, Write};
+use std::os::windows::prelude::*;
+use std::ffi::OsString;
+use winapi::
+{
+    um::winbase::*,
+    um::fileapi::*,
+    um::handleapi::*,
+    um::namedpipeapi::*,
+    um::winnt::{HANDLE, GENERIC_READ, GENERIC_WRITE, FILE_ATTRIBUTE_NORMAL},
+    shared::winerror::ERROR_PIPE_NOT_CONNECTED,
+    shared::minwindef::{DWORD, LPCVOID, LPVOID}
+};
+
+#[cfg(feature="rand")]
 use rand::{thread_rng, Rng, distributions::Alphanumeric};
 
 /// Abstraction over a named pipe
+#[derive(Debug, Clone)]
 pub struct Pipe
 {
-    handle: Option<PipeStream>,
-    listener: Option<PipeStream>,
-    pub(super) path: std::path::PathBuf,
-    pub(super) is_slave: bool
+    read_handle: Option<Handle>,
+    write_handle: Option<Handle>,
+    pub(super) path: std::path::PathBuf
 }
 
 unsafe impl Send for Pipe {}
@@ -25,10 +38,9 @@ impl Pipe
     {
         Ok(Pipe 
         { 
-            handle: None,
-            listener: None,
-            path: path.to_path_buf(), 
-            is_slave: false
+            read_handle: None,
+            write_handle: None,
+            path: path.to_path_buf()
         })
     }
 
@@ -53,50 +65,80 @@ impl Pipe
         Pipe::open(&Path::new(&path_string), OnCleanup::NoDelete)
     }
 
-    /// Flush input and output.
-    pub fn flush_pipe(&mut self) -> Result<()>
+    /// Creates a new pipe handle
+    fn create_pipe(path: &Path) -> io::Result<Handle> 
     {
-        // Flush output
-        match &mut self.handle
-        {
-            None => 
-            {
-                self.init_writer()?;
-            }
-            Some(_) => 
-            {
-                self.handle = None;
-                self.init_writer()?;
-            }
-        }
+        let mut os_str: OsString = path.as_os_str().into();
+        os_str.push("\x00");
+        let u16_slice = os_str.encode_wide().collect::<Vec<u16>>();
 
-        // Flush input
-        match &mut self.listener
-        {
-            Some(listener) => listener.flush()?,
-            None => {}
+        unsafe 
+        { 
+            WaitNamedPipeW(u16_slice.as_ptr(), 0); 
         }
+        let handle = unsafe 
+        {
+            CreateFileW(u16_slice.as_ptr(),
+                        GENERIC_READ | GENERIC_WRITE,
+                        0,
+                        std::ptr::null_mut(),
+                        OPEN_EXISTING,
+                        FILE_ATTRIBUTE_NORMAL,
+                        std::ptr::null_mut())
+        };
 
-        Ok(())
+        if handle != INVALID_HANDLE_VALUE 
+        {
+            Ok(Handle { inner: handle, handle_type: HandleType::Client})
+        } 
+        else 
+        {
+            Err(io::Error::last_os_error())
+        }
+    }
+
+    /// Creates a pipe listener
+    fn create_listener(path: &Path, first: bool) -> io::Result<Handle> 
+    {
+        let mut os_str: OsString = path.as_os_str().into();
+        os_str.push("\x00");
+        let u16_slice = os_str.encode_wide().collect::<Vec<u16>>();
+        let access_flags = if first 
+        {
+            PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE
+        } 
+        else 
+        {
+            FILE_FLAG_FIRST_PIPE_INSTANCE
+        };
+        let handle = unsafe 
+        {
+            CreateNamedPipeW(u16_slice.as_ptr(),
+                             access_flags,
+                             PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                             PIPE_UNLIMITED_INSTANCES,
+                             65536,
+                             65536,
+                             50,
+                             std::ptr::null_mut())
+        };
+
+        if handle != INVALID_HANDLE_VALUE 
+        {
+            Ok(Handle { inner: handle, handle_type: HandleType::Server })
+        } 
+        else 
+        {
+            Err(io::Error::last_os_error())
+        }
     }
 
     /// Initializes the pipe for writing
     fn init_writer(&mut self) -> Result<()>
     {
-        if self.handle.is_none()
+        if self.write_handle.is_none()
         {
-            self.handle = Some(PipeStream::connect(&self.path)?);
-        }
-        Ok(())
-    }
-
-    /// Initializes the pipe for reading
-    fn init_listener(&mut self) -> Result<()>
-    {
-        if self.listener.is_none()
-        {
-            let listener = PipeListener::bind(&self.path).and_then(|mut ls| ls.accept()).map_err(Error::from)?;
-            self.listener = Some(listener);
+            self.write_handle = Some(Pipe::create_pipe(&self.path)?);
         }
         Ok(())
     }
@@ -107,24 +149,20 @@ impl std::io::Write for Pipe
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> 
     {
         self.init_writer()?;
-        match &mut self.handle
+        match &mut self.write_handle
         {
             None => unreachable!(),
-            Some(stream) => stream.write(bytes)
+            Some(handle) => handle.write(bytes)
         }.map_err(std::io::Error::from)
     }
 
     fn flush(&mut self) -> std::io::Result<()> 
     {
-        match &mut self.handle
+        match &mut self.write_handle
         {
-            None => self.init_writer(),
-            Some(_) => 
-            {
-                self.handle = None;
-                self.init_writer()
-            }
-        }.map_err(std::io::Error::from)
+            None => self.init_writer().map_err(std::io::Error::from),
+            Some(handle) => handle.flush()
+        }
     }
 }
 
@@ -132,13 +170,26 @@ impl std::io::Read for Pipe
 {
     fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> 
     {
-        self.init_listener()?;
-        match &mut self.listener
+        if let None = self.read_handle
+        {
+            let listener = Pipe::create_listener(&self.path, true)?;
+            if unsafe { ConnectNamedPipe(listener.inner, std::ptr::null_mut()) } == 0 
+            {
+                match io::Error::last_os_error().raw_os_error().map(|x| x as u32) 
+                {
+                    Some(ERROR_PIPE_NOT_CONNECTED) => {},
+                    Some(err) => Err(io::Error::from_raw_os_error(err as i32))?,
+                    _ => unreachable!(),
+                }
+            }
+            self.read_handle = Some(listener)
+        }
+        match &mut self.read_handle
         {
             None => unreachable!(),
-            Some(listener) => 
+            Some(read_handle) => 
             {
-                match listener.read(bytes)
+                match read_handle.read(bytes)
                 {
                     Err(e) => 
                     {
@@ -165,30 +216,111 @@ impl std::io::Read for Pipe
     }
 }
 
-impl Drop for Pipe
+impl Read for Handle 
 {
-    fn drop(&mut self) 
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> 
     {
-        if !self.is_slave
+        let mut bytes_read = 0;
+        let ok = unsafe 
         {
-            self.handle = None;
-            self.listener = None;
+            ReadFile(self.inner,
+                     buf.as_mut_ptr() as LPVOID,
+                     buf.len() as DWORD,
+                     &mut bytes_read,
+                     std::ptr::null_mut())
+        };
+
+        if ok != 0 
+        {
+            Ok(bytes_read as usize)
+        } 
+        else 
+        {
+            match io::Error::last_os_error().raw_os_error().map(|x| x as u32) {
+                Some(ERROR_PIPE_NOT_CONNECTED) => Ok(0),
+                Some(err) => Err(io::Error::from_raw_os_error(err as i32)),
+                _ => panic!(""),
+            }
         }
     }
 }
 
-impl Clone for Pipe
+impl Write for Handle
 {
-    /// Cloning a pipe creates a slave which points to the same path but does not
-    /// close the pipe when dropped.
-    fn clone(&self) -> Self 
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> 
     {
-        Pipe 
-        { 
-            handle: None,
-            listener: None,
-            path: self.path.clone(), 
-            is_slave: true
+        let mut bytes_written = 0;
+        let status = unsafe 
+        {
+            WriteFile(self.inner,
+                      buf.as_ptr() as LPCVOID,
+                      buf.len() as DWORD,
+                      &mut bytes_written,
+                      std::ptr::null_mut())
+        };
+
+        if status != 0 
+        {
+            Ok(bytes_written as usize)
+        } 
+        else 
+        {
+            Err(io::Error::last_os_error())
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> 
+    {
+        if unsafe { FlushFileBuffers(self.inner) } != 0 
+        {
+            Ok(())
+        } 
+        else 
+        {
+            Err(io::Error::last_os_error())
         }
     }
 }
+
+#[derive(Debug)]
+enum HandleType
+{
+    Server, Slave, Client
+}
+
+#[derive(Debug)]
+struct Handle 
+{
+    inner: HANDLE,
+    handle_type: HandleType
+}
+
+impl Clone for Handle
+{
+    fn clone(&self) -> Self 
+    {
+        Handle
+        {
+            inner: self.inner,
+            handle_type: HandleType::Slave
+        }
+    }
+}
+
+impl Drop for Handle 
+{
+    fn drop(&mut self) 
+    {
+        unsafe { FlushFileBuffers(self.inner); }
+        match self.handle_type
+        {
+            HandleType::Slave => { return; }
+            HandleType::Server => unsafe { DisconnectNamedPipe(self.inner); }
+            HandleType::Client => {}
+        }
+        unsafe { CloseHandle(self.inner); }
+    }
+}
+
+unsafe impl Sync for Handle {}
+unsafe impl Send for Handle {}

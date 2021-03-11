@@ -105,3 +105,4 @@ fn test_name()
     let pipe = Pipe::with_name("test_name").unwrap();
     assert_eq!(pipe.name().unwrap(), "test_name");
 }
+

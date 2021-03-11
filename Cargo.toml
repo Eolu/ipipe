@@ -1,6 +1,6 @@
 [package]
 name = "ipipe"
-version = "0.5.0"
+version = "0.6.0"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 authors = ["Griffin O'Neill <gsoneill1003@gmail.com>"]
@@ -27,4 +27,4 @@ dashmap = { version = "4.0", optional = true }
 nix = "0.19"
 
 [target.'cfg(windows)'.dependencies]
-windows-named-pipe = "0.1"
+winapi = { version = "0.3", features = ["winerror", "winbase", "handleapi", "fileapi", "namedpipeapi"]}

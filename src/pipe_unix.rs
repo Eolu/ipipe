@@ -1,11 +1,13 @@
 use super::{Result, Error, OnCleanup};
 use std::path::{Path, PathBuf};
-use rand::{thread_rng, Rng, distributions::Alphanumeric};
 use fcntl::OFlag;
 use nix::{fcntl, unistd};
 use nix::sys::stat::{stat, Mode, SFlag};
 use nix::errno::Errno;
 use nix::sys::termios::{tcflush, FlushArg};
+
+#[cfg(feature="rand")]
+use rand::{thread_rng, Rng, distributions::Alphanumeric};
 
 /// Abstraction over a named pipe
 pub struct Pipe
@@ -139,12 +141,6 @@ impl Pipe
         {
             Err(Error::InvalidPath)
         }
-    }
-
-    /// Flush input and output.
-    pub fn flush_pipe(&self) -> Result<()>
-    {
-        tcflush(self.handle, FlushArg::TCIOFLUSH).map_err(Error::from)
     }
 }
 
