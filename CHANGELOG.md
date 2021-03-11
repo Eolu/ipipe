@@ -1,3 +1,7 @@
+# Version 0.6.1
+- Fixed bug that prevented writers from being initialized before readers on Windows. 
+- General stability improvements.
+
 # Version 0.6
 - Removed dependence on the `windows_named_pipe` crate. Everything is done through winapi on the windows side now. Will likely keep nix on the Linux side as it's sufficiently low-level for any potential purposes of this crate.
 - Fixed a bug where compilation failed if the `rand` feature was disabled.

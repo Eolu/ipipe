@@ -49,7 +49,7 @@ impl Pipe
     pub fn with_name(name: &str) -> Result<Self>
     {
         let path_string = format!(r"\\.\pipe\{}", name);
-        Pipe::open(&Path::new(&path_string), OnCleanup::NoDelete)
+        Pipe::open(&Path::new(&path_string), OnCleanup::Delete)
     }
 
     /// Open a pipe with a randomly generated name.
@@ -62,7 +62,7 @@ impl Pipe
             .take(15)
             .collect::<String>());
 
-        Pipe::open(&Path::new(&path_string), OnCleanup::NoDelete)
+        Pipe::open(&Path::new(&path_string), OnCleanup::Delete)
     }
 
     /// Creates a new pipe handle
@@ -74,7 +74,16 @@ impl Pipe
 
         unsafe 
         { 
-            WaitNamedPipeW(u16_slice.as_ptr(), 0); 
+            while WaitNamedPipeW(u16_slice.as_ptr(), 0xffffffff) == 0 
+            {
+                let error = io::Error::last_os_error();
+                match error.raw_os_error()
+                {
+                    None => { break; }
+                    Some(2) => {}
+                    Some(_) => Err(error)?
+                }
+            } 
         }
         let handle = unsafe 
         {

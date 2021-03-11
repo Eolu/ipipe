@@ -92,7 +92,7 @@ impl Pipe
                 }
             }
 
-            Pipe::open(&path, OnCleanup::NoDelete)
+            Pipe::open(&path, OnCleanup::Delete)
         }
         else
         {
@@ -135,7 +135,7 @@ impl Pipe
                 }
             }
 
-            Pipe::open(&path, OnCleanup::NoDelete)
+            Pipe::open(&path, OnCleanup::Delete)
         }
         else
         {

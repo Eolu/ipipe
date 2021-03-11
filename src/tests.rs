@@ -83,6 +83,29 @@ fn test_static()
     let result = thread.join().unwrap().unwrap();
     println!("String sent through the pipe: {:?}", result);
     assert_eq!("This came through the pipe.", result);
+    static_pipe::close("test_pipe");
+}
+
+#[cfg(feature="static_pipe")]
+#[test]
+fn test_write_first()
+{
+    const X: char = 'X';
+    use crate::static_pipe;
+
+    let mut reader = static_pipe::init("test_pipe2").unwrap();
+    thread::spawn(move || 
+        {
+            pprintln!("test_pipe2", "This came through the pipe.");
+            pprintln!("test_pipe2", "{}", X);
+        });
+
+    thread::sleep(std::time::Duration::from_millis(100));
+
+    let result = read_until_x(&mut reader).unwrap();
+    println!("String sent through the pipe: {:?}", result);
+    assert_eq!("This came through the pipe.", result);
+    static_pipe::close("test_pipe2");
 }
 
 fn read_until_x(pipe: &mut Pipe) -> std::io::Result<String>
@@ -94,7 +117,8 @@ fn read_until_x(pipe: &mut Pipe) -> std::io::Result<String>
         match pipe.read(&mut buf)
         {
             Ok(_) if buf[0] != 'X' as u8 => container.push(buf[0] as char),
-            _ => { break Ok(container); }
+            Ok(_) => { break Ok(container);  }
+            Err(e) => { break Err(e); }
         }
     }
 }
