@@ -1,6 +1,6 @@
 # ipipe - A cross-platform named-pipe library for Rust
 
-This library allows the creation of platform-independant named pipes. Standard Read/Write traits are implemented. Higher level/more fleshed-out APIs are under development and will be added in future versions. Improvements and PRs welcome.
+This library allows the creation of platform-independant named pipes. Standard Read/Write traits are implemented. APIs and performance will be improved in future versions. Issues and PRs welcome.
 
 Example:
 ```rust
@@ -85,7 +85,3 @@ Lower level as well as more complete/intuitive APIs to the static pipes are also
 
 - ### rand
 The 'rand' default feature will allow calling `Pipe::create()` to open a pipe with a randomly-generated name. The generated name will have the following format: `pipe_[process pid]_[15 random alphnumeric characters]`. Equivalent to `Pipe::with_name(&str)` in every other way.
-
-# Development Notes
-
-This project is very bare-bones in its current state, a proof-of-concept with some degree of practical usability at best. At this point, developers willing to contribute and improve would be very-much appreciated. As Windows named pipes work substantially different than Unix named pipes, there are likely unintuitive "features" of this crate in its current state when traveling from one platform to another. Sniping those is top priority.
