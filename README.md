@@ -84,4 +84,4 @@ pprintln!("my_pipe", "This text will be sent over the pipe!");
 Lower level as well as more complete/intuitive APIs to the static pipes are also planned for a future release. 
 
 - ### rand
-The 'rand' default feature will allow calling `Pipe::create()` to open a pipe with a randomly-generated name. The generated name will have the following format: `pipe_[process pid]_[15 random alphnumeric characters]`. Equivalent to `Pipe::with_name(&str)` in every other way.
+The `rand` default feature will allow calling `Pipe::create()` to open a pipe with a randomly-generated name. The generated name will have the following format: `pipe_[process pid]_[15 random alphnumeric characters]`. Equivalent to `Pipe::with_name(&str)` in every other way.
