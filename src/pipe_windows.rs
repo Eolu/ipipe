@@ -170,7 +170,12 @@ impl std::io::Write for Pipe
         match &mut self.write_handle
         {
             None => self.init_writer().map_err(std::io::Error::from),
-            Some(handle) => handle.flush()
+            Some(handle) => 
+            {
+                handle.flush()?;
+                self.write_handle = None;
+                Ok(())
+            }
         }
     }
 }
