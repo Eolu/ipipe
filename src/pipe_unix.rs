@@ -21,102 +21,72 @@ pub struct Pipe
 
 impl Pipe
 {
-    /// Open an existing pipe. If on_cleanup is set to 'DeleteOnDrop' the named
+    /// Open or create a pipe. If on_cleanup is set to 'DeleteOnDrop' the named
     /// pipe will be deleted when the returned struct is deallocated.
     /// Note that this function is not platform-agnostic as unix pipe paths and 
     /// Windows pipe paths are formatted differnetly.
     pub fn open(path: &Path, on_cleanup: OnCleanup) -> Result<Self>
     {
-        Pipe::init_handle(path)
-            .map(|handle| Pipe 
-            { 
-                handle1: handle, 
-                handle2: None,
-                path: path.to_path_buf(), 
-                is_slave: false,
-                delete: on_cleanup
-            })
+        let mode = Mode::S_IWUSR | Mode::S_IRUSR 
+                 | Mode::S_IRGRP | Mode::S_IWGRP;
+        
+        if let Some(_) = path.parent()
+        {
+            match stat(path)
+            {
+                Ok(file_stat) => 
+                {
+                    // Error out if file is not a named pipe
+                    if file_stat.st_mode & SFlag::S_IFIFO.bits() == 0
+                    {
+                        Err(Error::InvalidPath)?;
+                    }
+                },
+                Err(nix::Error::InvalidPath) | Err(nix::Error::Sys(Errno::ENOENT)) => 
+                {
+                    unistd::mkfifo(path, mode)?;
+                },
+                err => 
+                {
+                    err?;
+                }
+            }
+
+            Pipe::init_handle(path)
+                .map(|handle| Pipe 
+                { 
+                    handle1: handle, 
+                    handle2: None,
+                    path: path.to_path_buf(), 
+                    is_slave: false,
+                    delete: on_cleanup
+                })
+        }
+        else
+        {
+            Err(Error::InvalidPath)
+        }
     }
 
     /// Open or create a pipe with the given name. Note that this is just a
     /// string name, not a path.
     pub fn with_name(name: &str) -> Result<Self>
     {
-        let mode = Mode::S_IWUSR | Mode::S_IRUSR 
-                 | Mode::S_IRGRP | Mode::S_IWGRP;
-        
         let path = PathBuf::from(format!("/tmp/{}", name));
-        if let Some(_) = path.parent()
-        {
-            match stat(&path)
-            {
-                Ok(file_stat) => 
-                {
-                    // Error out if file is not a named pipe
-                    if file_stat.st_mode & SFlag::S_IFIFO.bits() == 0
-                    {
-                        Err(Error::InvalidPath)?;
-                    }
-                },
-                Err(nix::Error::InvalidPath) | Err(nix::Error::Sys(Errno::ENOENT)) => 
-                {
-                    unistd::mkfifo(&path, mode)?;
-                },
-                err => 
-                {
-                    err?;
-                }
-            }
-
-            Pipe::open(&path, OnCleanup::Delete)
-        }
-        else
-        {
-            Err(Error::InvalidPath)
-        }
+        Pipe::open(&path, OnCleanup::Delete)
     }
 
     /// Create a pipe with a randomly generated name in a tempory directory.
     #[cfg(feature="rand")]
     pub fn create() -> Result<Self>
     {
-        let mode = Mode::S_IWUSR | Mode::S_IRUSR 
-                 | Mode::S_IRGRP | Mode::S_IWGRP;
-
         // Generate a random path name
         let path = PathBuf::from(format!("/tmp/pipe_{}_{}", std::process::id(), thread_rng()
             .sample_iter(&Alphanumeric)
             .take(10)
             .collect::<String>()));
 
-        if let Some(_) = path.parent()
-        {
-            match stat(&path)
-            {
-                Ok(file_stat) => 
-                {
-                    // Error out if file is not a named pipe
-                    if file_stat.st_mode & SFlag::S_IFIFO.bits() == 0
-                    {
-                        Err(Error::InvalidPath)?;
-                    }
-                },
-                Err(nix::Error::InvalidPath) | Err(nix::Error::Sys(Errno::ENOENT)) => 
-                {
-                    unistd::mkfifo(&path, mode)?;
-                },
-                err => 
-                {
-                    err?;
-                }
-            }
-
-            Pipe::open(&path, OnCleanup::Delete)
-        }
-        else
-        {
-            Err(Error::InvalidPath)
-        }
+        Pipe::open(&path, OnCleanup::Delete)
     }
 
     fn init_handle(path: &Path) -> Result<Handle>

@@ -1,3 +1,6 @@
+# Version 0.7.2
+- Unix version will now create pipes if they don't exist when calling `open`. This is to be more consistent with the Windows implementation.
+
 # Version 0.7.1
 - Fixed a double flush
 
