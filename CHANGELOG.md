@@ -1,5 +1,5 @@
 # Version 0.7.0
-- Finally got reads working correctly for windows pipes. The solution is complex so more testing is stil needed.
+- Finally got reads working correctly for windows and linux pipes. The solution is complex so more testing is stil needed.
 - Static pipe print macros now return results. It's better than panicking.
 
 # Version 0.6.1
