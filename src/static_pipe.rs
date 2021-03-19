@@ -19,8 +19,8 @@ macro_rules! pprint
 #[macro_export]
 macro_rules! pprintln 
 {
-    ($name:tt) => (print_impl($name, "\n"));
-    ($name:tt, $($arg:tt)*) => ({ $crate::print($name, format!($($arg)*).as_str()); })
+    ($name:tt) => ($crate::print($name, "\n"));
+    ($name:tt, $($arg:tt)*) => ($crate::print($name, format!($($arg)*).as_str()))
 }
 
 /// Initialize a static pipe and return a handle to it.
@@ -57,15 +57,23 @@ pub fn close_all()
 /// The lowest-level static-pipe print function. Panics if pipe is not 
 /// initialized.
 #[inline]
-pub fn print(name: &str, s: &str)
+pub fn print(name: &str, s: &str) -> crate::Result<usize>
 {
     match PIPES.get(name)
     {
-        None => panic!("Pipe not initialized"),
-        Some(pipe) => match pipe.lock().as_mut().unwrap().write(s.as_bytes())
+        None => Err(crate::Error::Ipipe("Pipe not initialized")),
+        Some(pipe) => 
         {
-            Ok(_) => {}
-            Err(e) => panic!(e.to_string())
+            let mut pipe = pipe.lock()?;
+            match pipe.write(s.as_bytes())
+            {
+                Ok(written) => 
+                { 
+                    pipe.flush()?; 
+                    Ok(written) 
+                }
+                Err(e) => Err(crate::Error::from(e))
+            }
         }
     }
 }

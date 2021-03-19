@@ -1,3 +1,7 @@
+# Version 0.7.0
+- Finally got reads working correctly for windows pipes. The solution is complex so more testing is stil needed.
+- Static pipe print macros now return results. It's better than panicking.
+
 # Version 0.6.1
 - Fixed bug that prevented writers from being initialized before readers on Windows. 
 - General stability improvements.

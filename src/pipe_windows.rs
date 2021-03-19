@@ -23,7 +23,8 @@ pub struct Pipe
 {
     read_handle: Option<Handle>,
     write_handle: Option<Handle>,
-    pub(super) path: std::path::PathBuf
+    pub(super) path: std::path::PathBuf,
+    ended: bool
 }
 
 unsafe impl Send for Pipe {}
@@ -40,7 +41,8 @@ impl Pipe
         { 
             read_handle: None,
             write_handle: None,
-            path: path.to_path_buf()
+            path: path.to_path_buf(),
+            ended: false
         })
     }
 
@@ -118,7 +120,7 @@ impl Pipe
         } 
         else 
         {
-            FILE_FLAG_FIRST_PIPE_INSTANCE
+            PIPE_ACCESS_DUPLEX
         };
         let handle = unsafe 
         {
@@ -184,47 +186,72 @@ impl std::io::Read for Pipe
 {
     fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> 
     {
-        if let None = self.read_handle
+        loop
         {
-            let listener = Pipe::create_listener(&self.path, true)?;
-            if unsafe { ConnectNamedPipe(listener.inner, std::ptr::null_mut()) } == 0 
+            let handle = match &mut self.read_handle
             {
-                match io::Error::last_os_error().raw_os_error().map(|x| x as u32) 
+                None => 
                 {
-                    Some(ERROR_PIPE_NOT_CONNECTED) => {},
-                    Some(err) => Err(io::Error::from_raw_os_error(err as i32))?,
-                    _ => unreachable!(),
-                }
-            }
-            self.read_handle = Some(listener)
-        }
-        match &mut self.read_handle
-        {
-            None => unreachable!(),
-            Some(read_handle) => 
-            {
-                match read_handle.read(bytes)
-                {
-                    Err(e) => 
+                    let listener = Pipe::create_listener(&self.path, true)?;
+                    if unsafe { ConnectNamedPipe(listener.inner, std::ptr::null_mut()) } == 0 
                     {
-                        if let Some(err) = e.raw_os_error()
+                        match io::Error::last_os_error().raw_os_error().map(|x| x as u32) 
                         {
-                            if err as u32 != 109
+                            Some(ERROR_PIPE_NOT_CONNECTED) => {},
+                            Some(err) => Err(io::Error::from_raw_os_error(err as i32))?,
+                            _ => unreachable!(),
+                        }
+                    }
+                    self.read_handle = Some(listener);
+                    self.read_handle.as_mut().unwrap()
+                }
+                Some(read_handle) => 
+                {
+                    if self.ended
+                    {
+                        self.ended = false;
+                        let listener = Pipe::create_listener(&self.path, false)?;
+                        if unsafe { ConnectNamedPipe(listener.inner, std::ptr::null_mut()) } == 0 
+                        {
+                            match io::Error::last_os_error().raw_os_error().map(|x| x as u32) 
                             {
-                                Err(std::io::Error::from(e))
+                                Some(ERROR_PIPE_NOT_CONNECTED) => {},
+                                Some(err) => Err(io::Error::from_raw_os_error(err as i32))?,
+                                _ => unreachable!(),
                             }
-                            else
-                            {
-                                Ok(0)
-                            }
+                        }
+                        self.read_handle = Some(listener);
+                        self.read_handle.as_mut().unwrap()
+                    }
+                    else
+                    {
+                        read_handle
+                    }
+                }
+            };
+    
+            match handle.read(bytes)
+            {
+                Err(e) => 
+                {
+                    if let Some(err) = e.raw_os_error()
+                    {
+                        if err as u32 != 109
+                        {
+                            Err(std::io::Error::from(e))?;
                         }
                         else
                         {
-                            Ok(0)
+                            self.ended = true;
+                            continue;
                         }
-                    },
-                    bytes_read => bytes_read
-                }
+                    }
+                    else
+                    {
+                        break Ok(0);
+                    }
+                },
+                bytes_read => { break bytes_read; }
             }
         }
     }
@@ -250,10 +277,11 @@ impl Read for Handle
         } 
         else 
         {
-            match io::Error::last_os_error().raw_os_error().map(|x| x as u32) {
+            match io::Error::last_os_error().raw_os_error().map(|x| x as u32) 
+            {
                 Some(ERROR_PIPE_NOT_CONNECTED) => Ok(0),
                 Some(err) => Err(io::Error::from_raw_os_error(err as i32)),
-                _ => panic!(""),
+                _ => unreachable!(),
             }
         }
     }
@@ -296,13 +324,13 @@ impl Write for Handle
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum HandleType
 {
     Server, Slave, Client
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Handle 
 {
     inner: HANDLE,

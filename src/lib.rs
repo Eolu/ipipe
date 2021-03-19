@@ -87,10 +87,12 @@ impl Pipe
 #[derive(Debug)]
 pub enum Error
 {
+    Ipipe(&'static str),
     InvalidPath,
     InvalidUtf8,
     Io(std::io::Error),
-    Native(&'static str, u32, String)
+    Native(&'static str, u32, String),
+    Misc(String)
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -101,10 +103,12 @@ impl std::fmt::Display for Error
     {
         match self
         {
+            Error::Ipipe(s) => s.fmt(f),
             Error::InvalidPath => write!(f, "Invalid path"),
             Error::InvalidUtf8 => write!(f, "Invalid Utf8"),
             Error::Io(err) => err.fmt(f),
-            Error::Native(text, code, oss) => write!(f, "{}: {} - {}", text, code, oss)
+            Error::Native(text, code, oss) => write!(f, "{}: {} - {}", text, code, oss),
+            Error::Misc(s) => s.fmt(f),
         }
     }
 }
@@ -127,6 +131,14 @@ impl From<std::io::Error> for Error
     fn from(err: std::io::Error) -> Error
     {
         Error::Io(err)
+    }
+}
+
+impl<'a> From<std::sync::PoisonError<std::sync::MutexGuard<'a, Pipe>>> for Error
+{
+    fn from(err: std::sync::PoisonError<std::sync::MutexGuard<Pipe>>) -> Error
+    {
+        Error::Misc(err.to_string())
     }
 }
 

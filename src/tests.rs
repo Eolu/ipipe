@@ -68,44 +68,49 @@ fn test_pipe_2() -> crate::Result<()>
 
 #[cfg(feature="static_pipe")]
 #[test]
-fn test_static()
+fn test_static() -> Result<(), Box<dyn std::error::Error>>
 {
     const X: char = 'X';
     use crate::static_pipe;
 
-    let mut reader = static_pipe::init("test_pipe").unwrap();
-    let thread = thread::spawn(move || read_until_x(&mut reader));
+    let mut reader = static_pipe::init("test_pipe")?;
+    let thread = thread::spawn(move || read_until_x(&mut reader).unwrap());
 
     thread::sleep(std::time::Duration::from_millis(100));
 
-    pprintln!("test_pipe", "This came through the pipe.");
-    pprintln!("test_pipe", "{}", X);
-    let result = thread.join().unwrap().unwrap();
+    pprint!("test_pipe", "This came ")?;
+    pprintln!("test_pipe", "through the pipe.")?;
+    pprintln!("test_pipe", "{}", X)?;
+    let result = thread.join().unwrap();
     println!("String sent through the pipe: {:?}", result);
     assert_eq!("This came through the pipe.", result);
     static_pipe::close("test_pipe");
+
+    Ok(())
 }
 
 #[cfg(feature="static_pipe")]
 #[test]
-fn test_write_first()
+fn test_write_first() -> Result<(), Box<dyn std::error::Error>>
 {
     const X: char = 'X';
     use crate::static_pipe;
 
-    let mut reader = static_pipe::init("test_pipe2").unwrap();
+    let mut reader = static_pipe::init("test_pipe2")?;
     thread::spawn(move || 
         {
-            pprintln!("test_pipe2", "This came through the pipe.");
-            pprintln!("test_pipe2", "{}", X);
+            pprintln!("test_pipe2", "This came through the pipe.").unwrap();
+            pprintln!("test_pipe2", "{}", X).unwrap();
         });
 
     thread::sleep(std::time::Duration::from_millis(100));
 
-    let result = read_until_x(&mut reader).unwrap();
+    let result = read_until_x(&mut reader)?;
     println!("String sent through the pipe: {:?}", result);
     assert_eq!("This came through the pipe.", result);
     static_pipe::close("test_pipe2");
+
+    Ok(())
 }
 
 fn read_until_x(pipe: &mut Pipe) -> std::io::Result<String>
