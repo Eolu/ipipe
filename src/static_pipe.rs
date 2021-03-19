@@ -67,11 +67,7 @@ pub fn print(name: &str, s: &str) -> crate::Result<usize>
             let mut pipe = pipe.lock()?;
             match pipe.write(s.as_bytes())
             {
-                Ok(written) => 
-                { 
-                    pipe.flush()?; 
-                    Ok(written) 
-                }
+                Ok(written) => Ok(written),
                 Err(e) => Err(crate::Error::from(e))
             }
         }

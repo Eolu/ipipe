@@ -1,3 +1,6 @@
+# Version 0.7.1
+- Fixed a double flush
+
 # Version 0.7.0
 - Finally got reads working correctly for windows and linux pipes. The solution is complex so more testing is stil needed.
 - Static pipe print macros now return results. It's better than panicking.
