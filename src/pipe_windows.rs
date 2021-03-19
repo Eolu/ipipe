@@ -67,6 +67,23 @@ impl Pipe
         Pipe::open(&Path::new(&path_string), OnCleanup::Delete)
     }
 
+    /// Close a named pipe
+    pub fn close(&mut self) -> Result<()>
+    {
+        if let Some(handle) = &mut self.read_handle
+        {
+            unsafe 
+            { 
+                if DisconnectNamedPipe(handle.inner) == 0
+                {
+                    Err(io::Error::last_os_error())?;
+                }
+            }
+            handle.handle_type = HandleType::Client;
+        }
+        Ok(())
+    }
+
     /// Creates a new pipe handle
     fn create_pipe(path: &Path) -> io::Result<Handle> 
     {

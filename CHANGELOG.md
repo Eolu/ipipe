@@ -1,3 +1,7 @@
+# Version 0.7.3
+- Fixed a possible deadlock scenario by using a lock-free hashmap.
+- Added a close function that can be called explicitly. Pipes are not longer implicitly closed on drop.
+
 # Version 0.7.2
 - Unix version will now create pipes if they don't exist when calling `open`. This is to be more consistent with the Windows implementation.
 

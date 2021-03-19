@@ -89,6 +89,12 @@ impl Pipe
         Pipe::open(&path, OnCleanup::Delete)
     }
 
+    /// Close a named pipe
+    pub fn close(&mut self) -> Result<()>
+    {
+        unistd::close(self.handle1.inner).map_err(Error::from)
+    }
+
     fn init_handle(path: &Path) -> Result<Handle>
     {
         let mode = Mode::S_IWUSR | Mode::S_IRUSR 
@@ -227,20 +233,6 @@ impl Clone for Handle
             inner: self.inner.clone(),
             handle_type: self.handle_type.clone(),
             is_slave: true
-        }
-    }
-}
-
-impl Drop for Handle
-{
-    fn drop(&mut self) 
-    {
-        if !self.is_slave
-        {
-            if let Err(e) = unistd::close(self.inner).map_err(Error::from)
-            {
-                eprintln!("Error closing pipe: {:?}", e)
-            }
         }
     }
 }

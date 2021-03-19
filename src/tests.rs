@@ -83,7 +83,7 @@ fn test_static() -> Result<(), Box<dyn std::error::Error>>
     pprintln!("test_pipe", "{}", X)?;
     let result = thread.join().unwrap();
     println!("String sent through the pipe: {:?}", result);
-    assert_eq!("This came through the pipe.", result);
+    assert_eq!("This came through the pipe.\n", result);
     static_pipe::close("test_pipe");
 
     Ok(())
@@ -103,11 +103,9 @@ fn test_write_first() -> Result<(), Box<dyn std::error::Error>>
             pprintln!("test_pipe2", "{}", X).unwrap();
         });
 
-    thread::sleep(std::time::Duration::from_millis(100));
-
     let result = read_until_x(&mut reader)?;
     println!("String sent through the pipe: {:?}", result);
-    assert_eq!("This came through the pipe.", result);
+    assert_eq!("This came through the pipe.\n", result);
     static_pipe::close("test_pipe2");
 
     Ok(())
