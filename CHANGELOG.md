@@ -1,3 +1,6 @@
+# Version 0.7.4
+- Windows pipes will now attempt to recover from a disconnected client.
+
 # Version 0.7.3
 - Fixed a possible deadlock scenario by using a lock-free hashmap.
 - Added a close function that can be called explicitly. Pipes are not longer implicitly closed on drop.

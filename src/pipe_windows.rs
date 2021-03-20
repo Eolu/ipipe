@@ -10,7 +10,7 @@ use winapi::
     um::handleapi::*,
     um::namedpipeapi::*,
     um::winnt::{HANDLE, GENERIC_READ, GENERIC_WRITE, FILE_ATTRIBUTE_NORMAL},
-    shared::winerror::ERROR_PIPE_NOT_CONNECTED,
+    shared::winerror::{ERROR_PIPE_NOT_CONNECTED, ERROR_NO_DATA},
     shared::minwindef::{DWORD, LPCVOID, LPVOID}
 };
 
@@ -177,11 +177,28 @@ impl std::io::Write for Pipe
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> 
     {
         self.init_writer()?;
-        match &mut self.write_handle
+        let result = match &mut self.write_handle
         {
             None => unreachable!(),
             Some(handle) => handle.write(bytes)
-        }.map_err(std::io::Error::from)
+        };
+
+        // Try again if pipe is closed
+        match result
+        {
+            Ok(r) => {return Ok(r);}
+            Err(e) if e.raw_os_error().unwrap() as u32 == ERROR_NO_DATA => 
+            {
+                self.write_handle = None;
+                self.init_writer()?;
+                match &mut self.write_handle
+                {
+                    None => unreachable!(),
+                    Some(handle) => handle.write(bytes)
+                }
+            }
+            Err(e) => { Err(e)? }
+        }
     }
 
     fn flush(&mut self) -> std::io::Result<()> 
