@@ -41,7 +41,6 @@ pub fn get(name: &str) -> Option<Pipe>
 /// Closes a static pipe
 pub fn close(name: &str)
 {
-    println!("closing {}", name);
     match PIPES.remove(name, &PIPES.guard())
     {
         Some(pipe) => { drop(pipe.lock().unwrap()) }

@@ -1,3 +1,6 @@
+# Version 0.7.5
+- Removed a rogue print statement when closing a static pipe.
+
 # Version 0.7.4
 - Windows pipes will now attempt to recover from a disconnected client.
 
