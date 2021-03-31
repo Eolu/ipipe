@@ -1,3 +1,6 @@
+# Version 0.8
+- Added the `channels` feature.
+
 # Version 0.7.5
 - Removed a rogue print statement when closing a static pipe.
 

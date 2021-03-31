@@ -61,6 +61,9 @@ pub use static_pipe::*;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature="channels")]
+use std::sync::mpsc;
+
 #[derive(Clone, Copy)]
 pub enum OnCleanup
 {
@@ -80,6 +83,61 @@ impl Pipe
     pub fn name(&self) -> Option<&std::ffi::OsStr>
     {
         self.path().file_name()
+    }
+
+    /// Creates a receiver which all output from this pipe is directed into. A
+    /// thread is spawned to read from the pipe, which will shutdown when the 
+    /// receiver is dropped. Note that the thread blocks, and may attempt to read
+    /// from the pipe one time after the receiver is dropped.
+    #[cfg(feature="channels")]
+    pub fn receiver(mut self) -> (mpsc::Receiver<u8>, std::thread::JoinHandle<()>)
+    {
+        use std::io::Read;
+        let (tx, rx) = mpsc::channel();
+        (rx, 
+        std::thread::spawn(move ||
+        {
+            loop
+            {
+                for byte in (&mut self).bytes()
+                {
+                    match byte
+                    {
+                        Ok(byte) => 
+                        {
+                            match tx.send(byte)
+                            {
+                                Ok(()) => {}
+                                Err(e) => panic!(e),
+                            }
+                        },
+                        Err(e) => panic!(e)
+                    }
+                }
+            }
+        }))
+    }
+
+    /// Creates a sender which outputs all input into this pipe. A
+    /// thread is spawned to write into the pipe, which will shutdown when the 
+    /// sender is dropped.
+    #[cfg(feature="channels")]
+    pub fn sender(mut self) -> (mpsc::Sender<u8>, std::thread::JoinHandle<()>)
+    {
+        use std::io::Write;
+        let (tx, rx) = mpsc::channel();
+        (tx, 
+        std::thread::spawn(move ||
+        {
+            loop
+            {
+                match rx.recv()
+                {
+                    Ok(byte) => { (&mut self).write(&[byte]).unwrap(); },
+                    Err(e) => panic!(e)
+                }
+            }
+        }))
     }
 }
 

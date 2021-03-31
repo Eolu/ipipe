@@ -1,6 +1,6 @@
 [package]
 name = "ipipe"
-version = "0.7.5"
+version = "0.8.0"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 authors = ["Griffin O'Neill <gsoneill1003@gmail.com>"]
@@ -17,6 +17,7 @@ documentation = "https://docs.rs/ipipe"
 [features]
 default = ["static_pipe", "rand"]
 static_pipe = ["lazy_static", "flurry"]
+channels = []
 
 [dependencies]
 rand = { version = "0.5", optional = true }
