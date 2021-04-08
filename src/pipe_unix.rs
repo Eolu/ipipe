@@ -73,7 +73,7 @@ impl Pipe
     pub fn with_name(name: &str) -> Result<Self>
     {
         let path = PathBuf::from(format!("/tmp/{}", name));
-        Pipe::open(&path, OnCleanup::Delete)
+        Pipe::open(&path, OnCleanup::NoDelete)
     }
 
     /// Create a pipe with a randomly generated name in a tempory directory.
@@ -86,7 +86,7 @@ impl Pipe
             .take(10)
             .collect::<String>()));
 
-        Pipe::open(&path, OnCleanup::Delete)
+        Pipe::open(&path, OnCleanup::NoDelete)
     }
 
     /// Close a named pipe
