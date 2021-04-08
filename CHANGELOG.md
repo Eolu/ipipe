@@ -1,4 +1,4 @@
-# Version 0.8.1
+# Version 0.8.2
 - No longer delete autocreated pipes on Unix by default. This creates more consistent behavior between unix and Windows.
 
 # Version 0.8
