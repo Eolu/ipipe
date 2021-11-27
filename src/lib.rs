@@ -61,8 +61,11 @@ pub use static_pipe::*;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature="channels")]
+#[cfg(all(feature="channels", not(feature="tokio_channels")))]
 use std::sync::mpsc;
+
+#[cfg(all(feature="tokio_channels", not(feature="channels")))]
+use tokio::sync::mpsc;
 
 #[derive(Clone, Copy)]
 pub enum OnCleanup
@@ -89,7 +92,7 @@ impl Pipe
     /// thread is spawned to read from the pipe, which will shutdown when the 
     /// receiver is dropped. Note that the thread blocks, and may attempt to read
     /// from the pipe one time after the receiver is dropped.
-    #[cfg(feature="channels")]
+    #[cfg(all(feature="channels", not(feature="tokio_channels")))]
     pub fn receiver(mut self) -> (mpsc::Receiver<u8>, std::thread::JoinHandle<()>)
     {
         use std::io::Read;
@@ -101,18 +104,29 @@ impl Pipe
             {
                 for byte in (&mut self).bytes()
                 {
-                    match byte
-                    {
-                        Ok(byte) => 
-                        {
-                            match tx.send(byte)
-                            {
-                                Ok(()) => {}
-                                Err(e) => panic!(e),
-                            }
-                        },
-                        Err(e) => panic!(e)
-                    }
+                    tx.send(byte.unwrap()).unwrap()
+                }
+            }
+        }))
+    }
+
+    /// Creates a receiver which all output from this pipe is directed into. A
+    /// task is spawned to read from the pipe, which will shutdown when the 
+    /// receiver is dropped. Note that the task blocks, and may attempt to read
+    /// from the pipe one time after the receiver is dropped.
+    #[cfg(all(feature="tokio_channels", not(feature="channels")))]
+    pub async fn receiver(mut self) -> (mpsc::UnboundedReceiver<u8>, tokio::task::JoinHandle<()>)
+    {
+        use std::io::Read;
+        let (tx, rx) = mpsc::unbounded_channel();
+        (rx, 
+        tokio::task::spawn(async move
+        {
+            loop
+            {
+                for byte in (&mut self).bytes()
+                {
+                    tx.send(byte.unwrap()).unwrap()
                 }
             }
         }))
@@ -121,7 +135,7 @@ impl Pipe
     /// Creates a sender which outputs all input into this pipe. A
     /// thread is spawned to write into the pipe, which will shutdown when the 
     /// sender is dropped.
-    #[cfg(feature="channels")]
+    #[cfg(all(feature="channels", not(feature="tokio_channels")))]
     pub fn sender(mut self) -> (mpsc::Sender<u8>, std::thread::JoinHandle<()>)
     {
         use std::io::Write;
@@ -131,11 +145,25 @@ impl Pipe
         {
             loop
             {
-                match rx.recv()
-                {
-                    Ok(byte) => { (&mut self).write(&[byte]).unwrap(); },
-                    Err(e) => panic!(e)
-                }
+                (&mut self).write(&[rx.recv().unwrap()]).unwrap();
+            }
+        }))
+    }
+
+    /// Creates a sender which outputs all input into this pipe. A
+    /// thread is spawned to write into the pipe, which will shutdown when the 
+    /// sender is dropped.
+    #[cfg(all(feature="tokio_channels", not(feature="channels")))]
+    pub fn sender(mut self) -> (mpsc::UnboundedSender<u8>, tokio::task::JoinHandle<()>)
+    {
+        use std::io::Write;
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        (tx, 
+        tokio::task::spawn(async move
+        {
+            loop
+            {
+                (&mut self).write(&[rx.recv().await.unwrap()]).unwrap();
             }
         }))
     }
