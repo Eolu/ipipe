@@ -88,3 +88,6 @@ The `rand` default feature will allow calling `Pipe::create()` to open a pipe wi
 
 - ### channels
 The `channels` feature will allow calling `pipe.receiver()` and `pipe.sender()` to generate a channel. One end of the channel will be sent to a thread to watch either input or output from the pipe, and the other end of the channel will be returned.
+
+- ### tokio_channels
+Equivalent to the `channels` feature, but uses `tokio::task` in place of `std::thread`. 
