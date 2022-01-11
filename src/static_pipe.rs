@@ -3,6 +3,7 @@ use lazy_static::lazy_static;
 use std::{io::Write, sync::Mutex};
 use flurry::*;
 
+// TODO: Accept non-stringly-typed keys somehow
 lazy_static! 
 {
     static ref PIPES: HashMap<String, Mutex<Pipe>> = HashMap::new();

@@ -1,15 +1,16 @@
-use super::{Result, OnCleanup};
+use super::{Result, OnCleanup, Handle};
 use std::path::Path;
 use std::io::{self, Read, Write};
 use std::os::windows::prelude::*;
 use std::ffi::OsString;
+use std::sync::Arc;
 use winapi::
 {
     um::winbase::*,
     um::fileapi::*,
     um::handleapi::*,
     um::namedpipeapi::*,
-    um::winnt::{HANDLE, GENERIC_READ, GENERIC_WRITE, FILE_ATTRIBUTE_NORMAL},
+    um::winnt::{GENERIC_READ, GENERIC_WRITE, FILE_ATTRIBUTE_NORMAL},
     shared::winerror::{ERROR_PIPE_NOT_CONNECTED, ERROR_NO_DATA},
     shared::minwindef::{DWORD, LPCVOID, LPVOID}
 };
@@ -23,8 +24,7 @@ pub struct Pipe
 {
     read_handle: Option<Handle>,
     write_handle: Option<Handle>,
-    pub(super) path: std::path::PathBuf,
-    ended: bool
+    pub(super) path: std::path::PathBuf
 }
 
 unsafe impl Send for Pipe {}
@@ -41,8 +41,7 @@ impl Pipe
         { 
             read_handle: None,
             write_handle: None,
-            path: path.to_path_buf(),
-            ended: false
+            path: path.to_path_buf()
         })
     }
 
@@ -68,18 +67,21 @@ impl Pipe
     }
 
     /// Close a named pipe
-    pub fn close(&mut self) -> Result<()>
+    pub fn close(self) -> Result<()>
     {
-        if let Some(handle) = &mut self.read_handle
+        if let Some(mut handle) = self.read_handle
         {
-            unsafe 
-            { 
-                if DisconnectNamedPipe(handle.inner) == 0
-                {
-                    Err(io::Error::last_os_error())?;
+            if let Some(raw) = handle.raw()
+            {
+                unsafe 
+                { 
+                    if DisconnectNamedPipe(raw) == 0
+                    {
+                        Err(io::Error::last_os_error())?;
+                    }
                 }
             }
-            handle.handle_type = HandleType::Client;
+            handle.set_type(HandleType::Client);
         }
         Ok(())
     }
@@ -117,7 +119,7 @@ impl Pipe
 
         if handle != INVALID_HANDLE_VALUE 
         {
-            Ok(Handle { inner: handle, handle_type: HandleType::Client})
+            Ok(Handle::Arc(Arc::new(handle), HandleType::Client))
         } 
         else 
         {
@@ -153,7 +155,7 @@ impl Pipe
 
         if handle != INVALID_HANDLE_VALUE 
         {
-            Ok(Handle { inner: handle, handle_type: HandleType::Server })
+            Ok(Handle::Arc(Arc::new(handle), HandleType::Server))
         } 
         else 
         {
@@ -227,7 +229,8 @@ impl std::io::Read for Pipe
                 None => 
                 {
                     let listener = Pipe::create_listener(&self.path, true)?;
-                    if unsafe { ConnectNamedPipe(listener.inner, std::ptr::null_mut()) } == 0 
+                    // Unwrap is safe because handle was just created
+                    if unsafe { ConnectNamedPipe(listener.raw().unwrap(), std::ptr::null_mut()) } == 0 
                     {
                         match io::Error::last_os_error().raw_os_error().map(|x| x as u32) 
                         {
@@ -241,11 +244,11 @@ impl std::io::Read for Pipe
                 }
                 Some(read_handle) => 
                 {
-                    if self.ended
+                    if let None = read_handle.raw()
                     {
-                        self.ended = false;
                         let listener = Pipe::create_listener(&self.path, false)?;
-                        if unsafe { ConnectNamedPipe(listener.inner, std::ptr::null_mut()) } == 0 
+                        // Unwrap is safe because handle was just created
+                        if unsafe { ConnectNamedPipe(listener.raw().unwrap(), std::ptr::null_mut()) } == 0 
                         {
                             match io::Error::last_os_error().raw_os_error().map(|x| x as u32) 
                             {
@@ -276,7 +279,6 @@ impl std::io::Read for Pipe
                         }
                         else
                         {
-                            self.ended = true;
                             continue;
                         }
                     }
@@ -295,28 +297,35 @@ impl Read for Handle
 {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> 
     {
-        let mut bytes_read = 0;
-        let ok = unsafe 
+        if let Some(raw) = self.raw()
         {
-            ReadFile(self.inner,
-                     buf.as_mut_ptr() as LPVOID,
-                     buf.len() as DWORD,
-                     &mut bytes_read,
-                     std::ptr::null_mut())
-        };
-
-        if ok != 0 
-        {
-            Ok(bytes_read as usize)
-        } 
-        else 
-        {
-            match io::Error::last_os_error().raw_os_error().map(|x| x as u32) 
+            let mut bytes_read = 0;
+            let ok = unsafe 
             {
-                Some(ERROR_PIPE_NOT_CONNECTED) => Ok(0),
-                Some(err) => Err(io::Error::from_raw_os_error(err as i32)),
-                _ => unreachable!(),
+                ReadFile(raw,
+                         buf.as_mut_ptr() as LPVOID,
+                         buf.len() as DWORD,
+                         &mut bytes_read,
+                         std::ptr::null_mut())
+            };
+    
+            if ok != 0 
+            {
+                Ok(bytes_read as usize)
+            } 
+            else 
+            {
+                match io::Error::last_os_error().raw_os_error().map(|x| x as u32) 
+                {
+                    Some(ERROR_PIPE_NOT_CONNECTED) => Ok(0),
+                    Some(err) => Err(io::Error::from_raw_os_error(err as i32)),
+                    _ => unreachable!(),
+                }
             }
+        }
+        else
+        {
+            Ok(0)
         }
     }
 }
@@ -325,78 +334,73 @@ impl Write for Handle
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> 
     {
-        let mut bytes_written = 0;
-        let status = unsafe 
+        if let Some(raw) = self.raw()
         {
-            WriteFile(self.inner,
-                      buf.as_ptr() as LPCVOID,
-                      buf.len() as DWORD,
-                      &mut bytes_written,
-                      std::ptr::null_mut())
-        };
-
-        if status != 0 
+            let mut bytes_written = 0;
+            let status = unsafe 
+            {
+                WriteFile(raw,
+                          buf.as_ptr() as LPCVOID,
+                          buf.len() as DWORD,
+                          &mut bytes_written,
+                          std::ptr::null_mut())
+            };
+    
+            if status != 0 
+            {
+                Ok(bytes_written as usize)
+            } 
+            else 
+            {
+                Err(io::Error::last_os_error())
+            }
+        }
+        else
         {
-            Ok(bytes_written as usize)
-        } 
-        else 
-        {
-            Err(io::Error::last_os_error())
+            Err(io::Error::from_raw_os_error(ERROR_PIPE_NOT_CONNECTED as i32))
         }
     }
 
     fn flush(&mut self) -> io::Result<()> 
     {
-        if unsafe { FlushFileBuffers(self.inner) } != 0 
+        if let Some(raw) = self.raw()
         {
-            Ok(())
-        } 
-        else 
+            if unsafe { FlushFileBuffers(raw) } != 0 
+            {
+                Ok(())
+            } 
+            else 
+            {
+                Err(io::Error::last_os_error())
+            }
+        }
+        else
         {
-            Err(io::Error::last_os_error())
+            Err(io::Error::from_raw_os_error(ERROR_PIPE_NOT_CONNECTED as i32))
         }
     }
 }
 
-#[derive(Debug, PartialEq)]
-enum HandleType
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub(crate) enum HandleType
 {
-    Server, Slave, Client
-}
-
-#[derive(Debug, PartialEq)]
-struct Handle 
-{
-    inner: HANDLE,
-    handle_type: HandleType
-}
-
-impl Clone for Handle
-{
-    fn clone(&self) -> Self 
-    {
-        Handle
-        {
-            inner: self.inner,
-            handle_type: HandleType::Slave
-        }
-    }
+    Server, Client
 }
 
 impl Drop for Handle 
 {
     fn drop(&mut self) 
     {
-        unsafe { FlushFileBuffers(self.inner); }
-        match self.handle_type
+        if let Self::Arc(arc, ty) = self
         {
-            HandleType::Slave => { return; }
-            HandleType::Server => unsafe { DisconnectNamedPipe(self.inner); }
-            HandleType::Client => {}
+            let deref = **arc;
+            unsafe { FlushFileBuffers(deref); }
+            if *ty == HandleType::Server
+            {
+                unsafe { DisconnectNamedPipe(deref); }
+            }
+            unsafe { CloseHandle(deref); }
         }
-        unsafe { CloseHandle(self.inner); }
     }
 }
 
-unsafe impl Sync for Handle {}
-unsafe impl Send for Handle {}

@@ -60,6 +60,8 @@ pub use static_pipe::*;
 
 #[cfg(test)]
 mod tests;
+mod handle;
+pub(crate) use handle::*;
 
 #[cfg(all(feature="channels", not(feature="tokio_channels")))]
 use std::sync::mpsc;

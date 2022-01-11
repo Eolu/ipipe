@@ -1,5 +1,6 @@
-use super::{Result, Error, OnCleanup};
+use super::{Result, Error, OnCleanup, Handle};
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Weak};
 use fcntl::OFlag;
 use nix::{fcntl, unistd};
 use nix::sys::stat::{stat, Mode, SFlag};
@@ -90,9 +91,16 @@ impl Pipe
     }
 
     /// Close a named pipe
-    pub fn close(&mut self) -> Result<()>
+    pub fn close(self) -> Result<()>
     {
-        unistd::close(self.handle1.inner).map_err(Error::from)
+        if let Some(raw) = self.handle1.raw()
+        {
+            unistd::close(raw).map_err(Error::from)
+        }
+        else
+        {
+            Ok(())
+        }
     }
 
     fn init_handle(path: &Path) -> Result<Handle>
@@ -119,7 +127,7 @@ impl Pipe
             }
 
             fcntl::open(path, OFlag::O_RDWR | OFlag::O_NOCTTY, mode)
-                .map(|handle| Handle { inner: handle, handle_type: HandleType::Unknown, is_slave: false })
+                .map(|handle| Handle::Arc(Arc::new(handle), HandleType::Unknown))
                 .map_err(Error::from)
         }
         else
@@ -130,24 +138,24 @@ impl Pipe
 
     fn init_handle_type(&mut self, handle_type: HandleType) -> Result<std::os::unix::io::RawFd>
     {
-        if self.handle1.handle_type == HandleType::Unknown
+        if self.handle1.handle_type() == HandleType::Unknown
         {
-            self.handle1.handle_type = handle_type;
+            self.handle1.set_type(handle_type);
         }
-        Ok(if self.handle1.handle_type == handle_type
+        if self.handle1.handle_type() == handle_type
         {
-            self.handle1.inner
+            self.handle1.raw()
         }
         else
         {
             if let None = self.handle2
             {
                 let mut handle = Pipe::init_handle(&self.path)?;
-                handle.handle_type = handle_type;
+                handle.set_type(handle_type);
                 self.handle2 = Some(handle);
             }
-            self.handle2.as_ref().unwrap().inner
-        })
+            self.handle2.as_ref().unwrap().raw()
+        }.ok_or(nix::Error::Sys(nix::errno::Errno::EBADF)).map_err(|e| e.into())
     }
 }
 
@@ -183,7 +191,7 @@ impl Drop for Pipe
     {
         if !self.is_slave
         {
-            self.handle1 = Handle { inner: 0, handle_type: HandleType::Unknown, is_slave: true };
+            self.handle1 = Handle::Weak(Weak::new(), HandleType::Unknown);
             self.handle2 = None;
             if let OnCleanup::Delete = self.delete
             {
@@ -211,31 +219,7 @@ impl Clone for Pipe
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-enum HandleType
+pub(crate) enum HandleType
 {
     Read, Write, Unknown
 }
-
-#[derive(Debug, PartialEq)]
-struct Handle 
-{
-    inner: std::os::unix::io::RawFd,
-    handle_type: HandleType,
-    is_slave: bool
-}
-
-impl Clone for Handle
-{
-    fn clone(&self) -> Self 
-    {
-        Handle 
-        { 
-            inner: self.inner.clone(),
-            handle_type: self.handle_type.clone(),
-            is_slave: true
-        }
-    }
-}
-
-unsafe impl Sync for Handle {}
-unsafe impl Send for Handle {}
