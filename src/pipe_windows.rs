@@ -27,9 +27,6 @@ pub struct Pipe
     pub(super) path: std::path::PathBuf
 }
 
-unsafe impl Send for Pipe {}
-unsafe impl Sync for Pipe {}
-
 impl Pipe
 {
     /// Open a pipe at an existing path. Note that this function is not 
