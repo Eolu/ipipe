@@ -3,6 +3,8 @@ use lazy_static::lazy_static;
 use std::{io::Write, sync::Mutex};
 use flurry::*;
 
+// FIXME: The inconsistent use of mutex should be cleaned up here
+
 // TODO: Accept non-stringly-typed keys somehow
 lazy_static! 
 {
@@ -42,11 +44,7 @@ pub fn get(name: &str) -> Option<Pipe>
 /// Closes a static pipe
 pub fn close(name: &str)
 {
-    match PIPES.remove(name, &PIPES.guard())
-    {
-        Some(pipe) => { drop(pipe.lock().unwrap()) }
-        None => {}
-    }
+    PIPES.remove(name, &PIPES.guard());
 }
 
 /// Closes all static pipes

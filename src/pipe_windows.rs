@@ -78,6 +78,8 @@ impl Pipe
                     }
                 }
             }
+            // Server handles are disconnected when dropped, while client 
+            // handles are not. This line prevents a double-disconnect. 
             handle.set_type(HandleType::Client);
         }
         Ok(())

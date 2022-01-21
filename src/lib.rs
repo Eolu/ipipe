@@ -37,10 +37,11 @@
 //! platform agnostic, however, as Windows pipe paths require a special
 //! format.
 //!
-//! Calling `clone()` on a pipe will create a slave instance. Slave instances 
-//! will not delete or close the pipe when they go out of scope. This allows
-//! readers and writers to the same pipe to be passed to different threads and 
-//! contexts.
+//! Calling `clone()` on a pipe will create a pipe who's handle exists as a Weak
+//! reference to the original pipe. That means dropping the original pipe will 
+//! also close all of its clones. If a clone is in the middle of a read or write
+//! when the drop of the original pipe happens, the pipe will not be closed
+//! until that read or write is complete. 
 
 #[cfg(unix)]
 mod pipe_unix;

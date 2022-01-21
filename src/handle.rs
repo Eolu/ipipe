@@ -1,3 +1,5 @@
+//! This module contains a wrapper for the raw device handle. 
+
 use std::sync::{Arc, Weak};
 use crate::HandleType;
 
