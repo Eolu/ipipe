@@ -58,7 +58,7 @@ Example path (Unix):
 
 # A note on reading/writing
 
-To read or write to the same pipe in multiple places, `Pipe::clone` should be used to share the pipe. Pipe instances containing an internal `Arc` which will maintain the raw handle to the pipe until the last instance is dropped. Creating 2 separate handles to the same pipe is currently undefined behavior. This is an issue currently under investigation. 
+To read or write to the same pipe in multiple places, `Pipe::clone` should be used to share the pipe. Pipe instances contain an internal `Arc` which will maintain the raw handle to the pipe until the last instance is dropped. Creating 2 separate handles to the same pipe is currently undefined behavior. This is an issue currently under investigation. 
 
 # Features
 - ### static_pipe
