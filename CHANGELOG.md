@@ -1,3 +1,7 @@
+# Version 0.11.3
+- Fixed a permissions issue with Windows pipes. 
+- Documented some non-obvious behavior regarding pipe cloning. 
+
 # Version 0.10.0
 - Internally to the Pipe struct, raw handles are now wrapped in Arc. Cloning a Pipe results in a weak reference rather than a naive copy of the raw handle. This allows for all clones to be properly invalidated when a handle is closed. Note that this does NOT contain any internal Mutex.
 - Minor breaking change - `Pipe::close()` now takes `self` instead of `&mut self`, ensuring that references to closed pipes can't sit around. 

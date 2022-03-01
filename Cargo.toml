@@ -1,6 +1,6 @@
 [package]
 name = "ipipe"
-version = "0.11.2"
+version = "0.11.3"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 authors = ["Griffin O'Neill <gsoneill1003@gmail.com>"]
@@ -31,3 +31,4 @@ nix = "0.19"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winerror", "winbase", "handleapi", "fileapi", "namedpipeapi"]}
+windows = { version = "0.33", features = ["Win32_Security", "Win32_Foundation"]}

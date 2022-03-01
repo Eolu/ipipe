@@ -42,7 +42,6 @@ impl Handle
         }
     }
 
-    #[cfg(unix)]
     pub fn handle_type(&self) -> HandleType
     {
         match self

@@ -22,9 +22,8 @@ use rand::{thread_rng, Rng, distributions::Alphanumeric};
 #[derive(Debug, Clone)]
 pub struct Pipe
 {
-    read_handle: Option<Handle>,
-    write_handle: Option<Handle>,
-    pub(super) path: std::path::PathBuf
+    handle: Option<Handle>,
+    pub(super) path: std::path::PathBuf,
 }
 
 impl Pipe
@@ -36,8 +35,7 @@ impl Pipe
     {
         Ok(Pipe 
         { 
-            read_handle: None,
-            write_handle: None,
+            handle: None,
             path: path.to_path_buf()
         })
     }
@@ -66,21 +64,24 @@ impl Pipe
     /// Close a named pipe
     pub fn close(self) -> Result<()>
     {
-        if let Some(mut handle) = self.read_handle
+        if let Some(mut handle) = self.handle
         {
-            if let Some(raw) = handle.raw()
+            if handle.handle_type() == HandleType::Server
             {
-                unsafe 
-                { 
-                    if DisconnectNamedPipe(raw) == 0
-                    {
-                        Err(io::Error::last_os_error())?;
+                if let Some(raw) = handle.raw()
+                {
+                    unsafe 
+                    { 
+                        if DisconnectNamedPipe(raw) == 0
+                        {
+                            Err(io::Error::last_os_error())?;
+                        }
                     }
                 }
+                // Server handles are disconnected when dropped, while client 
+                // handles are not. This line prevents a double-disconnect. 
+                handle.set_type(HandleType::Client);
             }
-            // Server handles are disconnected when dropped, while client 
-            // handles are not. This line prevents a double-disconnect. 
-            handle.set_type(HandleType::Client);
         }
         Ok(())
     }
@@ -165,9 +166,9 @@ impl Pipe
     /// Initializes the pipe for writing
     fn init_writer(&mut self) -> Result<()>
     {
-        if self.write_handle.is_none()
+        if self.handle.is_none()
         {
-            self.write_handle = Some(Pipe::create_pipe(&self.path)?);
+            self.handle = Some(Pipe::create_pipe(&self.path)?);
         }
         Ok(())
     }
@@ -178,7 +179,7 @@ impl std::io::Write for Pipe
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> 
     {
         self.init_writer()?;
-        let result = match &mut self.write_handle
+        let result = match &mut self.handle
         {
             None => unreachable!(),
             Some(handle) => handle.write(bytes)
@@ -190,9 +191,9 @@ impl std::io::Write for Pipe
             Ok(r) => {return Ok(r);}
             Err(e) if e.raw_os_error().unwrap() as u32 == ERROR_NO_DATA => 
             {
-                self.write_handle = None;
+                self.handle = None;
                 self.init_writer()?;
-                match &mut self.write_handle
+                match &mut self.handle
                 {
                     None => unreachable!(),
                     Some(handle) => handle.write(bytes)
@@ -204,13 +205,13 @@ impl std::io::Write for Pipe
 
     fn flush(&mut self) -> std::io::Result<()> 
     {
-        match &mut self.write_handle
+        match &mut self.handle
         {
             None => self.init_writer().map_err(std::io::Error::from),
             Some(handle) => 
             {
                 handle.flush()?;
-                self.write_handle = None;
+                self.handle = None;
                 Ok(())
             }
         }
@@ -223,7 +224,7 @@ impl std::io::Read for Pipe
     {
         loop
         {
-            let handle = match &mut self.read_handle
+            let handle = match &mut self.handle
             {
                 None => 
                 {
@@ -238,8 +239,8 @@ impl std::io::Read for Pipe
                             _ => unreachable!(),
                         }
                     }
-                    self.read_handle = Some(listener);
-                    self.read_handle.as_mut().unwrap()
+                    self.handle = Some(listener);
+                    self.handle.as_mut().unwrap()
                 }
                 Some(read_handle) => 
                 {
@@ -256,8 +257,8 @@ impl std::io::Read for Pipe
                                 _ => unreachable!(),
                             }
                         }
-                        self.read_handle = Some(listener);
-                        self.read_handle.as_mut().unwrap()
+                        self.handle = Some(listener);
+                        self.handle.as_mut().unwrap()
                     }
                     else
                     {
