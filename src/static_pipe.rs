@@ -1,14 +1,12 @@
 use crate::Pipe;
 use lazy_static::lazy_static;
-use std::{io::Write, sync::Mutex};
+use std::io::Write;
 use flurry::*;
-
-// FIXME: The inconsistent use of mutex should be cleaned up here
 
 // TODO: Accept non-stringly-typed keys somehow
 lazy_static! 
 {
-    static ref PIPES: HashMap<String, Mutex<Pipe>> = HashMap::new();
+    static ref PIPES: HashMap<String, Pipe> = HashMap::new();
 }
 
 /// Print a string to a static pipe
@@ -30,15 +28,15 @@ macro_rules! pprintln
 pub fn init(name: &str) -> crate::Result<Pipe>
 {
     let pipe = Pipe::with_name(name)?;
-    let reader = pipe.clone();
-    PIPES.insert(name.to_string(), Mutex::from(pipe), &PIPES.guard());
-    Ok(reader)
+    let clone = pipe.clone();
+    PIPES.insert(name.to_string(), pipe, &PIPES.guard());
+    Ok(clone)
 }
 
 /// Get a handle to an existing static pipe
 pub fn get(name: &str) -> Option<Pipe>
 {
-    PIPES.get(name, &PIPES.guard()).map(|pipe| pipe.lock().unwrap().clone())
+    PIPES.get(name, &PIPES.guard()).map(Pipe::clone)
 }
 
 /// Closes a static pipe
@@ -58,12 +56,11 @@ pub fn close_all()
 #[inline]
 pub fn print(name: &str, s: &str) -> crate::Result<usize>
 {
-    match PIPES.get(name, &PIPES.guard())
+    match PIPES.get(name, &PIPES.guard()).map(Pipe::clone)
     {
         None => Err(crate::Error::Ipipe("Pipe not initialized")),
-        Some(pipe) => 
+        Some(mut pipe) => 
         {
-            let mut pipe = pipe.lock()?;
             match pipe.write(s.as_bytes())
             {
                 Ok(written) => Ok(written),

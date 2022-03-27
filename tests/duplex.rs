@@ -47,3 +47,12 @@ fn duplex_test()
     t1.join().unwrap();
     t2.join().unwrap();
 }
+
+#[test]
+fn duplex_test_2() 
+{
+    let t1 = thread::spawn(|| client_server1(Pipe::with_name("test2").unwrap()));
+    let t2 = thread::spawn(|| client_server2(Pipe::with_name("test2").unwrap()));
+    t1.join().unwrap();
+    t2.join().unwrap();
+}

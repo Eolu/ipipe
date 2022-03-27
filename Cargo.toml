@@ -1,6 +1,6 @@
 [package]
 name = "ipipe"
-version = "0.11.4"
+version = "0.11.6"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 authors = ["Griffin O'Neill <gsoneill1003@gmail.com>"]

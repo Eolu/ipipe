@@ -1,3 +1,6 @@
+# Version 0.11.5
+- Resolved an [issue](https://github.com/Eolu/ipipe/issues/10).
+
 # Version 0.11.3
 - Fixed a permissions issue with Windows pipes. 
 - Documented some non-obvious behavior regarding pipe cloning. 

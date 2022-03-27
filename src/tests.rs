@@ -78,8 +78,11 @@ fn test_static() -> Result<(), Box<dyn std::error::Error>>
 
     thread::sleep(std::time::Duration::from_millis(100));
 
+    println!("Writing str 1");
     pprint!("test_pipe", "This came ")?;
+    println!("Writing str 2");
     pprintln!("test_pipe", "through the pipe.")?;
+    println!("Writing str 3");
     pprintln!("test_pipe", "{}", X)?;
     let result = thread.join().unwrap();
     println!("String sent through the pipe: {:?}", result);
@@ -115,15 +118,20 @@ fn read_until_x(pipe: &mut Pipe) -> std::io::Result<String>
 {
     let mut buf: [u8; 1] = [0];
     let mut container = String::new();
-    loop
+    let r = loop
     {
-        match pipe.read(&mut buf)
+        println!("Reading...");
+        let r = match pipe.read(&mut buf)
         {
             Ok(_) if buf[0] != 'X' as u8 => container.push(buf[0] as char),
             Ok(_) => { break Ok(container);  }
             Err(e) => { break Err(e); }
-        }
-    }
+        };
+        println!("Read: {:?}", String::from_utf8_lossy(&buf));
+        r
+    };
+    println!("Done reading!");
+    r
 }
 
 #[test]

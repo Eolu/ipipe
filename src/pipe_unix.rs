@@ -26,10 +26,13 @@ impl Pipe
     /// pipe will be deleted when the returned struct is deallocated.
     /// Note that this function is not platform-agnostic as unix pipe paths and 
     /// Windows pipe paths are formatted differnetly.
-    pub fn open(path: &Path, on_cleanup: OnCleanup) -> Result<Self>
+    pub fn open(path: &Path, on_cleanup: OnCleanup, handle_type: HandleType) -> Result<Self>
     {
-        let mode = Mode::S_IWUSR | Mode::S_IRUSR 
-                 | Mode::S_IRGRP | Mode::S_IWGRP;
+        let mode = match handle_type
+        {
+            HandleType::Read => Mode::S_IRUSR | Mode::S_IRGRP,
+            HandleType::Write => Mode::S_IWUSR | Mode::S_IWGRP
+        };
         
         if let Some(_) = path.parent()
         {
@@ -53,7 +56,7 @@ impl Pipe
                 }
             }
 
-            Pipe::init_handle(path)
+            Pipe::init_handle(path, handle_type)
                 .map(|handle| Pipe 
                 { 
                     handle1: handle, 
@@ -71,15 +74,15 @@ impl Pipe
 
     /// Open or create a pipe with the given name. Note that this is just a
     /// string name, not a path.
-    pub fn with_name(name: &str) -> Result<Self>
+    pub fn with_name(name: &str, handle_type: HandleType) -> Result<Self>
     {
         let path = PathBuf::from(format!("/tmp/{}", name));
-        Pipe::open(&path, OnCleanup::NoDelete)
+        Pipe::open(&path, OnCleanup::NoDelete, handle_type)
     }
 
     /// Create a pipe with a randomly generated name in a tempory directory.
     #[cfg(feature="rand")]
-    pub fn create() -> Result<Self>
+    pub fn create(handle_type: HandleType) -> Result<Self>
     {
         // Generate a random path name
         let path = PathBuf::from(format!("/tmp/pipe_{}_{}", std::process::id(), thread_rng()
@@ -87,7 +90,7 @@ impl Pipe
             .take(10)
             .collect::<String>()));
 
-        Pipe::open(&path, OnCleanup::NoDelete)
+        Pipe::open(&path, OnCleanup::NoDelete, handle_type)
     }
 
     /// Close a named pipe
@@ -103,10 +106,13 @@ impl Pipe
         }
     }
 
-    fn init_handle(path: &Path) -> Result<Handle>
+    fn init_handle(path: &Path, handle_type: HandleType) -> Result<Handle>
     {
-        let mode = Mode::S_IWUSR | Mode::S_IRUSR 
-                 | Mode::S_IRGRP | Mode::S_IWGRP;
+        let mode = match handle_type
+        {
+            HandleType::Read => Mode::S_IRUSR | Mode::S_IRGRP,
+            HandleType::Write => Mode::S_IWUSR | Mode::S_IWGRP
+        };
 
         if let Some(_) = path.parent()
         {
@@ -127,7 +133,7 @@ impl Pipe
             }
 
             fcntl::open(path, OFlag::O_RDWR | OFlag::O_NOCTTY, mode)
-                .map(|handle| Handle::Arc(Arc::new(handle), HandleType::Unknown))
+                .map(|handle| Handle::Arc(Arc::new(handle), handle_type))
                 .map_err(Error::from)
         }
         else
@@ -138,10 +144,6 @@ impl Pipe
 
     fn init_handle_type(&mut self, handle_type: HandleType) -> Result<std::os::unix::io::RawFd>
     {
-        if self.handle1.handle_type() == HandleType::Unknown
-        {
-            self.handle1.set_type(handle_type);
-        }
         if self.handle1.handle_type() == handle_type
         {
             self.handle1.raw()
@@ -150,7 +152,7 @@ impl Pipe
         {
             if let None = self.handle2
             {
-                let mut handle = Pipe::init_handle(&self.path)?;
+                let mut handle = Pipe::init_handle(&self.path, handle_type)?;
                 handle.set_type(handle_type);
                 self.handle2 = Some(handle);
             }
@@ -191,7 +193,7 @@ impl Drop for Pipe
     {
         if !self.is_slave
         {
-            self.handle1 = Handle::Weak(Weak::new(), HandleType::Unknown);
+            self.handle1 = None;
             self.handle2 = None;
             if let OnCleanup::Delete = self.delete
             {
@@ -221,5 +223,5 @@ impl Clone for Pipe
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub(crate) enum HandleType
 {
-    Read, Write, Unknown
+    Read, Write
 }
