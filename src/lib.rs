@@ -244,13 +244,7 @@ impl From<nix::Error> for Error
 {
     fn from(error: nix::Error) -> Error
     {
-        match error
-        {
-            nix::Error::InvalidPath => Error::InvalidPath,
-            nix::Error::InvalidUtf8 => Error::InvalidUtf8,
-            nix::Error::UnsupportedOperation => Error::InvalidPath,
-            nix::Error::Sys(errno) => Error::Native("", errno as u32, errno.desc().to_string())
-        }
+        Error::Native("", error as u32, error.desc().to_string())
     }
 }
 

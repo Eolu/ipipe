@@ -43,7 +43,7 @@ impl Pipe
                         Err(Error::InvalidPath)?;
                     }
                 },
-                Err(nix::Error::InvalidPath) | Err(nix::Error::Sys(Errno::ENOENT)) => 
+                Err(Errno::ENOENT) => 
                 {
                     unistd::mkfifo(path, mode)?;
                 },
@@ -117,7 +117,7 @@ impl Pipe
                     // Error out if file is not a named pipe
                     if file_stat.st_mode & SFlag::S_IFIFO.bits() == 0
                     {
-                        Err(nix::Error::InvalidPath)?;
+                        Err(nix::Error::ENOENT)?;
                     }
                 },
                 err => 
@@ -155,7 +155,7 @@ impl Pipe
                 self.handle2 = Some(handle);
             }
             self.handle2.as_ref().unwrap().raw()
-        }.ok_or(nix::Error::Sys(nix::errno::Errno::EBADF)).map_err(|e| e.into())
+        }.ok_or(nix::errno::Errno::EBADF).map_err(|e| e.into())
     }
 }
 
