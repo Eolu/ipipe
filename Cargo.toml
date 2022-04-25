@@ -27,7 +27,7 @@ flurry = { version = "0.3.1", optional = true }
 tokio = { version = "1.14", optional = true, features = ["rt", "sync"] }
 
 [target.'cfg(unix)'.dependencies]
-nix = "0.19"
+nix = "0.24.1"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winerror", "winbase", "handleapi", "fileapi", "namedpipeapi"]}

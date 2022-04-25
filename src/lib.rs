@@ -242,15 +242,14 @@ impl From<std::string::FromUtf8Error> for Error
 #[cfg(unix)]
 impl From<nix::Error> for Error
 {
-    fn from(error: nix::Error) -> Error
+    fn from(error: nix::Error) -> Self
     {
-        match error
-        {
-            nix::Error::InvalidPath => Error::InvalidPath,
-            nix::Error::InvalidUtf8 => Error::InvalidUtf8,
-            nix::Error::UnsupportedOperation => Error::InvalidPath,
-            nix::Error::Sys(errno) => Error::Native("", errno as u32, errno.desc().to_string())
-        }
+        // match error
+        // {
+        //     nix::Error::UnknownErrno => Error::InvalidPath,
+        //     _ => Error::Native("", errno as u32, errno.desc().to_string())
+        // }
+        Error::Io(std::io::Error::from_raw_os_error(error as i32))
     }
 }
 
