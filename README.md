@@ -4,7 +4,7 @@ This library is currently unstable and does not achieve reliable cross-platofrm 
 
 ### This project is in peril!
 
-The right solution is to create (or find) unique and cmoplete crates that wrap the Windows and the Unix functionality seeprately, and then to turn this into (one or more) crates that leverage those into specific opinionated, cross-platform implementations. I just don't have the time to prioritize working on this at the moment, so I'm looking for someone interested in adopting this project. I have a reasonably good idea of what needs to happen at both a high and a low-level, and would at least be willing to spend the time to transfer the knowledge I have. Otherwise, unless something changes for me and I find myself with a chunk more free time, this is at risk of becoming a failed project. Contact me through github,  reddit `/u/eolu`, or discord `Eolu#3431` if interested.
+The right solution is to create (or find) unique and complete crates that wrap the Windows and the Unix functionality separately, and then to turn this into (one or more) crates that leverage those into specific opinionated, cross-platform implementations. I just don't have the time to prioritize working on this at the moment, so I'm looking for someone interested in adopting this project. I have a reasonably good idea of what needs to happen at both a high and a low-level, and would at least be willing to spend the time to transfer the knowledge I have. Otherwise, unless something changes for me and I find myself with a chunk more free time, this is at risk of becoming a failed project. Contact me through github,  reddit `/u/eolu`, or discord `Eolu#3431` if interested.
 
 # ipipe - A cross-platform named-pipe library for Rust
 
