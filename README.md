@@ -1,6 +1,6 @@
-# WARNING
+# THIS PROJECT IS DEAD
 
-This library is currently unstable and does not achieve reliable cross-platofrm functionality. While it works in some specific cases, there are simply too many exceptions to call this anywhere close to production-ready. 
+I haven't had time to work on this in years and what is there is not usable.
 
 ### This project is in peril!
 
